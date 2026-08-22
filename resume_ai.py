@@ -227,7 +227,7 @@ DO NOT change:
 - Job titles
 - Employment dates
 - Actual experience facts
-- Projects
+- Projects facts
 - Certifications
 - Any factual information
 
