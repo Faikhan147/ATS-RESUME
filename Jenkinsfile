@@ -94,13 +94,19 @@ pipeline {
                     echo "======================================"
 
                     echo "MATCHED SKILLS:"
-                    echo result.matched_skills.join(', ')
+                    result.matched_skills.each { skill ->
+                        echo "  - ${skill}"
+                    }
 
                     echo "MISSING SKILLS:"
-                    echo result.missing_skills.join(', ')
+                    result.missing_skills.each { skill ->
+                        echo "  - ${skill}"
+                    }
 
                     echo "SUGGESTIONS:"
-                    echo result.suggestions.join('\n')
+                    result.suggestions.each { suggestion ->
+                        echo "  - ${suggestion}"
+                    }
                 }
             }
         }
