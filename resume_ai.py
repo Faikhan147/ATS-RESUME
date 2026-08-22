@@ -428,6 +428,81 @@ def apply_rewrite(
 
     print(f"Created: {output_docx}")
 
+# ============================================================
+# OPTIMIZE RESUME
+# ============================================================
+
+def optimize_resume(
+    original_docx,
+    jd_path,
+    target_score=80,
+    max_attempts=3
+):
+
+    current_docx = original_docx
+
+    best_score = 0
+    best_resume = original_docx
+
+    for attempt in range(1, max_attempts + 1):
+
+        print(f"ATTEMPT {attempt}")
+
+        extract_docx(
+            current_docx,
+            f"resume_{attempt}.json"
+        )
+
+        ats_analysis(
+            f"resume_{attempt}.json",
+            jd_path,
+            f"ats_{attempt}.json"
+        )
+
+        result = load_json(
+            f"ats_{attempt}.json"
+        )
+
+        score = result["ats_score"]
+
+        print(f"ATS = {score}")
+
+        if score > best_score:
+            best_score = score
+            best_resume = current_docx
+
+        if score >= target_score:
+            print("TARGET REACHED")
+            break
+
+        rewrite_resume(
+            current_docx,
+            f"resume_{attempt}.json",
+            jd_path,
+            f"rewrite_{attempt}.json"
+        )
+
+        next_docx = (
+            f"resume_optimized_{attempt}.docx"
+        )
+
+        apply_rewrite(
+            current_docx,
+            f"rewrite_{attempt}.json",
+            next_docx
+        )
+
+        current_docx = next_docx
+
+    shutil.copy(
+        best_resume,
+        "best_resume.docx"
+    )
+
+    print(
+        f"BEST ATS SCORE = {best_score}"
+    )
+
 
 # ============================================================
 # MAIN
@@ -446,6 +521,8 @@ python3 resume_ai.py ats resume.json jd.txt ats.json
 python3 resume_ai.py rewrite input.docx resume.json jd.txt rewritten.json
 
 python3 resume_ai.py apply input.docx rewritten.json output.docx
+
+python3 resume_ai.py optimize input.docx jd.txt
 """)
         sys.exit(1)
 
@@ -477,17 +554,17 @@ python3 resume_ai.py apply input.docx rewritten.json output.docx
 
     elif command == "apply":
 
-        elif command == "optimize":
-
-            optimize_resume(
-                sys.argv[2],
-                sys.argv[3]
-            )
-
         apply_rewrite(
             sys.argv[2],
             sys.argv[3],
             sys.argv[4]
+        )
+
+    elif command == "optimize":
+
+        optimize_resume(
+            sys.argv[2],
+            sys.argv[3]
         )
 
     else:
