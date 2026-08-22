@@ -431,6 +431,31 @@ def apply_rewrite(
 
     replacements = rewritten.get("replacements", [])
 
+        # Validate mandatory sections returned by AI
+    required_sections = {
+        "Professional Summary",
+        "Skills",
+        "Experience",
+        "Project Titles",
+        "Project Bullet Points"
+    }
+
+    returned_sections = {
+        item.get("section")
+        for item in replacements
+        if item.get("section")
+    }
+
+    missing_sections = required_sections - returned_sections
+
+    if missing_sections:
+        raise RuntimeError(
+            "AI rewrite is missing mandatory sections: "
+            + ", ".join(sorted(missing_sections))
+        )
+
+    print("AI returned all mandatory resume sections.")
+
     for item in replacements:
 
         index = int(item["paragraph_index"])
