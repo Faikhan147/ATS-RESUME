@@ -431,7 +431,7 @@ def apply_rewrite(
 
     replacements = rewritten.get("replacements", [])
 
-        # Validate mandatory sections returned by AI
+    # Validate mandatory sections returned by AI
     required_sections = {
         "Professional Summary",
         "Skills",
@@ -456,6 +456,7 @@ def apply_rewrite(
 
     print("AI returned all mandatory resume sections.")
 
+    
     for item in replacements:
 
         index = int(item["paragraph_index"])
