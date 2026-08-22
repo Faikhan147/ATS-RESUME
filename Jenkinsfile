@@ -21,7 +21,18 @@ pipeline {
         stage('Prepare Workspace') {
             steps {
                 sh '''
+                    set -e
+
                     rm -rf output
+                    rm -f \
+                        resume_original.docx \
+                        resume_*.json \
+                        ats_*.json \
+                        rewrite_*.json \
+                        resume_optimized_*.docx \
+                        best_resume.docx \
+                        jd.txt
+
                     mkdir -p output
 
                     printf '%s\\n' "$JOB_DESCRIPTION" > jd.txt
@@ -30,14 +41,23 @@ pipeline {
                 unstash 'RESUME'
 
                 sh '''
+                    set -e
+
                     mv RESUME resume_original.docx
                 '''
             }
         }
 
+
         stage('Validate Resume') {
             steps {
                 sh '''
+                    set -e
+
+                    echo "======================================"
+                    echo "VALIDATING INPUT FILES"
+                    echo "======================================"
+
                     test -f resume_original.docx || {
                         echo "ERROR: Resume DOCX not found"
                         exit 1
@@ -48,62 +68,109 @@ pipeline {
                         exit 1
                     }
 
+                    echo ""
+                    echo "Resume:"
+                    ls -lh resume_original.docx
+
+                    echo ""
+                    echo "Resume file type:"
                     file resume_original.docx
 
-                    echo "Job Description saved successfully:"
+                    echo ""
+                    echo "Job Description:"
                     wc -c jd.txt
 
+                    echo ""
+                    echo "Python:"
                     python3 --version
+
+                    echo ""
+                    echo "LibreOffice:"
                     libreoffice --version
                 '''
             }
         }
 
+
         stage('Install Python Dependencies') {
             steps {
                 sh '''
-                    python3 -m pip install --user --break-system-packages --upgrade openai python-docx
+                    set -e
+
+                    python3 -m pip install \
+                        --user \
+                        --break-system-packages \
+                        --upgrade \
+                        openai \
+                        python-docx
                 '''
             }
         }
 
-        stage('Extract Resume Content') {
+
+        stage('Initial Resume Extraction') {
             steps {
                 sh '''
-                    python3 resume_ai.py extract resume_original.docx resume_content.json
+                    set -e
+
+                    echo "======================================"
+                    echo "EXTRACTING ORIGINAL RESUME"
+                    echo "======================================"
+
+                    python3 resume_ai.py extract \
+                        resume_original.docx \
+                        resume_content.json
+
+                    test -s resume_content.json
+
+                    echo ""
+                    echo "Resume extraction completed."
+                    ls -lh resume_content.json
                 '''
             }
         }
 
-        stage('ATS Analysis') {
+
+        stage('Initial ATS Analysis') {
             steps {
                 sh '''
+                    set -e
+
+                    echo "======================================"
+                    echo "INITIAL ATS ANALYSIS"
+                    echo "======================================"
+
                     python3 resume_ai.py ats \
                         resume_content.json \
                         jd.txt \
-                        ats_result.json
+                        ats_initial.json
+
+                    test -s ats_initial.json
                 '''
 
                 script {
-                    def result = readJSON file: 'ats_result.json'
+                    def result = readJSON file: 'ats_initial.json'
 
-                    env.ATS_SCORE = result.ats_score.toString()
+                    env.INITIAL_ATS_SCORE = result.ats_score.toString()
 
                     echo "======================================"
-                    echo "ATS SCORE = ${env.ATS_SCORE}"
+                    echo "INITIAL ATS SCORE = ${env.INITIAL_ATS_SCORE}"
                     echo "======================================"
 
                     echo "MATCHED SKILLS:"
+
                     result.matched_skills.each { skill ->
                         echo "  - ${skill}"
                     }
 
                     echo "MISSING SKILLS:"
+
                     result.missing_skills.each { skill ->
                         echo "  - ${skill}"
                     }
 
                     echo "SUGGESTIONS:"
+
                     result.suggestions.each { suggestion ->
                         echo "  - ${suggestion}"
                     }
@@ -111,89 +178,185 @@ pipeline {
             }
         }
 
-        stage('Decide Resume Action') {
+
+        stage('Optimize Resume') {
             steps {
+                sh '''
+                    set -e
+
+                    echo "======================================"
+                    echo "STARTING RESUME OPTIMIZATION"
+                    echo "======================================"
+
+                    python3 resume_ai.py optimize \
+                        resume_original.docx \
+                        jd.txt
+
+                    test -f best_resume.docx
+
+                    echo ""
+                    echo "Best resume generated:"
+                    ls -lh best_resume.docx
+                '''
+            }
+        }
+
+
+        stage('Prepare Final Resume') {
+            steps {
+                sh '''
+                    set -e
+
+                    echo "======================================"
+                    echo "PREPARING FINAL RESUME"
+                    echo "======================================"
+
+                    cp best_resume.docx output/resume_final.docx
+
+                    test -f output/resume_final.docx
+
+                    echo ""
+                    echo "Final DOCX:"
+                    ls -lh output/resume_final.docx
+                '''
+            }
+        }
+
+
+        stage('Final Resume Extraction') {
+            steps {
+                sh '''
+                    set -e
+
+                    echo "======================================"
+                    echo "ANALYZING FINAL RESUME"
+                    echo "======================================"
+
+                    python3 resume_ai.py extract \
+                        output/resume_final.docx \
+                        final_resume_content.json
+
+                    test -s final_resume_content.json
+                '''
+            }
+        }
+
+
+        stage('Final ATS Analysis') {
+            steps {
+                sh '''
+                    set -e
+
+                    python3 resume_ai.py ats \
+                        final_resume_content.json \
+                        jd.txt \
+                        final_ats_result.json
+
+                    test -s final_ats_result.json
+                '''
+
                 script {
+                    def result = readJSON file: 'final_ats_result.json'
 
-                    if (env.ATS_SCORE.toInteger() < 80) {
+                    env.FINAL_ATS_SCORE = result.ats_score.toString()
 
-                        echo "ATS score is below 80."
-                        echo "Resume rewriting will start."
+                    echo "======================================"
+                    echo "FINAL ATS SCORE = ${env.FINAL_ATS_SCORE}"
+                    echo "======================================"
 
-                    } else {
+                    echo "FINAL MATCHED SKILLS:"
 
-                        echo "ATS score is 80 or above."
-                        echo "Original resume will be kept."
+                    result.matched_skills.each { skill ->
+                        echo "  - ${skill}"
+                    }
+
+                    echo "FINAL MISSING SKILLS:"
+
+                    result.missing_skills.each { skill ->
+                        echo "  - ${skill}"
+                    }
+
+                    echo "FINAL SUGGESTIONS:"
+
+                    result.suggestions.each { suggestion ->
+                        echo "  - ${suggestion}"
                     }
                 }
             }
         }
 
-        stage('Rewrite Resume') {
-
-            when {
-                expression {
-                    env.ATS_SCORE.toInteger() < 80
-                }
-            }
-
-            steps {
-                sh '''
-                    python3 resume_ai.py rewrite \
-                        resume_original.docx \
-                        resume_content.json \
-                        jd.txt \
-                        rewritten_content.json
-
-                    python3 resume_ai.py apply \
-                        resume_original.docx \
-                        rewritten_content.json \
-                        output/resume_v2.docx
-                '''
-            }
-        }
-
-        stage('Keep Original Resume') {
-
-            when {
-                expression {
-                    env.ATS_SCORE.toInteger() >= 80
-                }
-            }
-
-            steps {
-                sh '''
-                    cp resume_original.docx output/resume_v2.docx
-                '''
-            }
-        }
 
         stage('Convert DOCX to PDF') {
             steps {
                 sh '''
+                    set -e
+
+                    echo "======================================"
+                    echo "CONVERTING DOCX TO PDF"
+                    echo "======================================"
+
                     libreoffice \
                         --headless \
                         --convert-to pdf \
                         --outdir output \
-                        output/resume_v2.docx
+                        output/resume_final.docx
 
+                    test -f output/resume_final.pdf
+
+                    echo ""
+                    echo "Generated files:"
                     ls -lh output/
                 '''
             }
         }
 
+
         stage('Archive Resume') {
             steps {
-                archiveArtifacts artifacts: 'output/resume_v2.docx,output/resume_v2.pdf,ats_result.json',
+                archiveArtifacts artifacts:
+                    'output/resume_final.docx,' +
+                    'output/resume_final.pdf,' +
+                    'final_ats_result.json,' +
+                    'ats_initial.json,' +
+                    'best_resume.docx',
                     fingerprint: true
             }
         }
     }
 
+
     post {
+
+        success {
+            echo "======================================"
+            echo "PIPELINE SUCCESS"
+            echo "======================================"
+
+            echo "Initial ATS Score: ${env.INITIAL_ATS_SCORE ?: 'N/A'}"
+            echo "Final ATS Score:   ${env.FINAL_ATS_SCORE ?: 'N/A'}"
+
+            echo ""
+            echo "Final Resume:"
+            echo "output/resume_final.docx"
+
+            echo ""
+            echo "Final PDF:"
+            echo "output/resume_final.pdf"
+        }
+
+        failure {
+            echo "======================================"
+            echo "PIPELINE FAILED"
+            echo "======================================"
+
+            echo "Initial ATS Score: ${env.INITIAL_ATS_SCORE ?: 'N/A'}"
+            echo "Final ATS Score:   ${env.FINAL_ATS_SCORE ?: 'N/A'}"
+        }
+
         always {
-            echo "Pipeline completed."
-            echo "ATS Score: ${env.ATS_SCORE ?: 'N/A'}"
+            echo "======================================"
+            echo "PIPELINE COMPLETED"
+            echo "======================================"
         }
     }
 }
