@@ -311,54 +311,6 @@ You MUST:
 15. The final Skills section must be meaningfully optimized for the
     target JD, not merely copied from the original resume.
 
-ATS OPTIMIZATION RULES:
-
-1. Reorder existing skills based on JD relevance.
-
-2. Highlight JD-relevant technologies already present
-   anywhere in the resume.
-
-3. You may add missing skills ONLY when they are
-   supported by evidence found elsewhere in the resume.
-
-Evidence may come from:
-- Experience
-- Projects
-- Existing Skills
-- Certifications
-
-Examples of VALID additions:
-
-- Jenkins -> CI/CD Pipelines
-- Jenkins -> Deployment Automation
-- Terraform -> Infrastructure as Code (IaC)
-- Docker + Kubernetes -> Container Orchestration
-- Prometheus + Grafana -> Monitoring & Observability
-- Trivy + SonarQube -> DevSecOps
-- GitHub Actions -> CI/CD
-
-Examples of INVALID additions:
-
-- Jenkins -> ArgoCD
-- Jenkins -> GitLab CI
-- Jenkins -> Vault
-- Docker -> OpenShift
-- Kubernetes -> KEDA
-
-unless explicitly supported by resume content.
-
-DO NOT invent:
-
-- Companies
-- Projects
-- Experience
-- Employment dates
-- Metrics
-- Responsibilities
-- Achievements
-
-DO NOT claim the candidate used a tool
-unless there is evidence somewhere in the resume.
 
 Keep rewritten text approximately the same length.
 
