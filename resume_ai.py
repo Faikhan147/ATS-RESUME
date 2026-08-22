@@ -1,3 +1,4 @@
+import os
 import sys
 import json
 import re
@@ -230,16 +231,75 @@ DO NOT invent:
 - Projects
 - Responsibilities
 
-Only improve wording using information that already exists.
+IMPORTANT:
 
-Improve ATS compatibility by naturally using relevant keywords from the JD
-ONLY when the candidate's existing resume supports them.
+Professional Summary MUST ALWAYS be rewritten.
 
-VERY IMPORTANT:
+Skills section MUST ALWAYS be rewritten.
 
-Keep rewritten text approximately the same length as the original text.
+Experience section MUST ALWAYS be rewritten.
 
-Do not dramatically increase paragraph length.
+Project titles and project bullet points MUST ALWAYS be rewritten.
+
+Even if the section already looks good,
+rewrite it to better align with the target JD.
+
+ATS OPTIMIZATION RULES:
+
+1. Reorder existing skills based on JD relevance.
+
+2. Highlight JD-relevant technologies already present
+   anywhere in the resume.
+
+3. You may add missing skills ONLY when they are
+   supported by evidence found elsewhere in the resume.
+
+Evidence may come from:
+- Experience
+- Projects
+- Existing Skills
+- Certifications
+
+Examples of VALID additions:
+
+- Jenkins -> CI/CD Pipelines
+- Jenkins -> Deployment Automation
+- Terraform -> Infrastructure as Code (IaC)
+- Docker + Kubernetes -> Container Orchestration
+- Prometheus + Grafana -> Monitoring & Observability
+- Trivy + SonarQube -> DevSecOps
+- GitHub Actions -> CI/CD
+
+Examples of INVALID additions:
+
+- Jenkins -> ArgoCD
+- Jenkins -> GitLab CI
+- Jenkins -> Vault
+- Docker -> OpenShift
+- Kubernetes -> KEDA
+
+unless explicitly supported by resume content.
+
+DO NOT invent:
+
+- Companies
+- Projects
+- Experience
+- Employment dates
+- Metrics
+- Responsibilities
+- Achievements
+
+DO NOT claim the candidate used a tool
+unless there is evidence somewhere in the resume.
+
+Keep rewritten text approximately the same length.
+
+Do not increase section length by more than 20%.
+
+Preserve ATS friendliness.
+
+The generated text must fit naturally into the existing resume layout.
 
 Return ONLY valid JSON.
 
@@ -255,9 +315,22 @@ Format:
 }}
 
 Only return paragraphs that belong to:
+
 - Professional Summary
 - Skills
 - Experience
+- Project Titles
+- Project Bullet Points
+
+Formatting Preservation Rules:
+
+- Do not create new sections.
+- Do not create new tables.
+- Do not create new headings.
+- Do not change document structure.
+- Only replace paragraph text.
+- Assume original font, size, spacing,
+  alignment and formatting will be preserved.
 
 JOB DESCRIPTION:
 
@@ -408,5 +481,4 @@ python3 resume_ai.py apply input.docx rewritten.json output.docx
 
 
 if __name__ == "__main__":
-    import os
     main()
