@@ -32,8 +32,8 @@ pipeline {
                 '''
 
                 script {
-                    withFileParameter('RESUME') { file ->
-                        sh "cp '${file}' resume_original.docx"
+                    withFileParameter('RESUME') {
+                        sh "cp "$RESUME" resume_original.docx"
                     }
                 }
             }
