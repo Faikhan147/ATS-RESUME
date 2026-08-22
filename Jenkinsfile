@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     parameters {
-        base64File(
+        file(
             name: 'RESUME',
             description: 'Upload your original Resume DOCX'
         )
