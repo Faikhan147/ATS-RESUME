@@ -116,7 +116,17 @@ IMPORTANT:
 
 The resume is real candidate data.
 
-DO NOT assume the candidate has skills that are not present.
+Evaluate the resume exactly as written.
+
+Consider:
+- Skills section
+- Experience section
+- Projects section
+- Certifications
+- Keywords
+- Responsibilities
+
+Do not assume experience that is not present.
 
 Return ONLY valid JSON.
 
@@ -466,6 +476,13 @@ python3 resume_ai.py apply input.docx rewritten.json output.docx
         )
 
     elif command == "apply":
+
+        elif command == "optimize":
+
+            optimize_resume(
+                sys.argv[2],
+                sys.argv[3]
+            )
 
         apply_rewrite(
             sys.argv[2],
