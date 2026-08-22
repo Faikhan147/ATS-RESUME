@@ -2,10 +2,7 @@ pipeline {
     agent any
 
     parameters {
-        file(
-            name: 'RESUME',
-            description: 'Upload your original Resume DOCX'
-        )
+        stashedFile 'RESUME'
 
         text(
             name: 'JOB_DESCRIPTION',
@@ -27,15 +24,14 @@ pipeline {
                     rm -rf output
                     mkdir -p output
 
-                    # Save Jenkins Job Description parameter into jd.txt
                     printf '%s\\n' "$JOB_DESCRIPTION" > jd.txt
                 '''
 
-                script {
-                    withFileParameter('RESUME') {
-                        sh "cp "$RESUME" resume_original.docx"
-                    }
-                }
+                unstash 'RESUME'
+
+                sh '''
+                    mv RESUME resume_original.docx
+                '''
             }
         }
 
