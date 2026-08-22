@@ -62,7 +62,7 @@ pipeline {
         stage('Install Python Dependencies') {
             steps {
                 sh '''
-                    python3 -m pip install --user --upgrade openai python-docx
+                    python3 -m pip install --user --break-system-packages --upgrade openai python-docx
                 '''
             }
         }
