@@ -26,6 +26,9 @@ pipeline {
                 sh '''
                     rm -rf output
                     mkdir -p output
+
+                    # Save Jenkins Job Description parameter into jd.txt
+                    printf '%s\\n' "$JOB_DESCRIPTION" > jd.txt
                 '''
 
                 script {
@@ -44,7 +47,15 @@ pipeline {
                         exit 1
                     }
 
+                    test -s jd.txt || {
+                        echo "ERROR: Job Description is empty"
+                        exit 1
+                    }
+
                     file resume_original.docx
+
+                    echo "Job Description saved successfully:"
+                    wc -c jd.txt
 
                     python3 --version
                     libreoffice --version
