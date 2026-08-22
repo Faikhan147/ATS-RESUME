@@ -206,11 +206,13 @@ def rewrite_resume(
     prompt = f"""
 You are a professional ATS resume writer.
 
-Your job is to improve ONLY the wording of:
+Your job is to improve ONLY the wording, ordering, and JD alignment of:
 
 1. Professional Summary
 2. Skills
 3. Experience
+4. Project Titles
+5. Project Bullet Points
 
 The original DOCX is the source of truth.
 
@@ -241,18 +243,73 @@ DO NOT invent:
 - Projects
 - Responsibilities
 
-IMPORTANT:
+IMPORTANT — MANDATORY REWRITING:
 
 Professional Summary MUST ALWAYS be rewritten.
 
-Skills section MUST ALWAYS be rewritten.
+Skills section MUST ALWAYS be rewritten and optimized for the JD.
 
 Experience section MUST ALWAYS be rewritten.
 
 Project titles and project bullet points MUST ALWAYS be rewritten.
 
-Even if the section already looks good,
+Even if a section already looks good,
 rewrite it to better align with the target JD.
+
+SKILLS SECTION — MANDATORY JD OPTIMIZATION:
+
+The Skills section MUST NOT be left unchanged.
+
+You MUST:
+
+1. Extract ALL skills and technologies supported by evidence anywhere
+   in the resume.
+
+2. Compare those supported skills against the target JD.
+
+3. Reorder the Skills section according to JD relevance.
+
+4. Put the most JD-relevant supported skills first.
+
+5. ADD supported skills that are missing from the current Skills section
+   when those skills are explicitly supported elsewhere in the resume.
+
+6. Evidence may come from:
+   - Professional Summary
+   - Experience
+   - Projects
+   - Existing Skills
+   - Certifications
+
+7. Examples:
+   - Helm if used in Projects
+   - Bash if used in Projects
+   - Python if used in Projects
+   - Loki if used in Projects
+   - SonarQube if used in Projects
+   - Trivy if used in Projects
+   - CI/CD if Jenkins or GitHub Actions pipelines are present
+   - Infrastructure as Code (IaC) if Terraform is present
+   - Container Orchestration if Docker/Kubernetes/EKS/ECS are present
+   - Monitoring & Observability if Prometheus/Grafana/CloudWatch are present
+
+8. NEVER add a technology just because it appears in the JD.
+
+9. NEVER invent unsupported skills, tools, technologies, experience,
+   achievements, or responsibilities.
+
+10. Preserve the existing Skills categories where possible.
+
+11. Reorder skills inside the existing categories based on JD relevance.
+
+12. Add supported skills to the most appropriate existing category.
+
+13. Return the COMPLETE replacement text for the Skills section.
+
+14. Do NOT return only individual skill additions.
+
+15. The final Skills section must be meaningfully optimized for the
+    target JD, not merely copied from the original resume.
 
 ATS OPTIMIZATION RULES:
 
@@ -319,10 +376,31 @@ Format:
   "replacements": [
     {{
       "paragraph_index": 0,
+      "section": "Professional Summary",
+      "new_text": "..."
+    }},
+    {{
+      "paragraph_index": 0,
+      "section": "Skills",
       "new_text": "..."
     }}
   ]
 }}
+
+MANDATORY OUTPUT REQUIREMENT:
+
+The "replacements" array MUST contain at least one replacement
+for each of these sections:
+
+- Professional Summary
+- Skills
+- Experience
+- Project Titles
+- Project Bullet Points
+
+For the Skills section, return the COMPLETE optimized Skills text.
+
+Do not omit the Skills replacement.
 
 Only return paragraphs that belong to:
 
