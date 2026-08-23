@@ -501,6 +501,32 @@ rewrite it to better align with the target JD.
 SKILLS SECTION — CRITICAL
 ============================================================
 
+============================================================
+SKILLS IDENTIFICATION — MANDATORY
+============================================================
+
+Before generating replacements, inspect EVERY paragraph in
+RESUME STRUCTURE and identify the actual Skills content.
+
+You MUST return at least ONE replacement with:
+
+"section": "Skills"
+
+Use the EXACT paragraph_id of the existing Skills content.
+
+NEVER assume Skills is body:p:XX.
+
+NEVER use a paragraph just because its number looks correct.
+
+If Skills is inside a table or sidebar, preserve its exact
+table/cell paragraph_id.
+
+If Skills contains multiple paragraphs, return one replacement
+for each existing Skills content paragraph.
+
+The Skills heading does not need to be rewritten.
+Only the existing Skills content paragraphs must be rewritten.
+
 The Skills section MUST NOT be left unchanged.
 
 You MUST:
