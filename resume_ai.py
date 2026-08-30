@@ -160,7 +160,7 @@ def get_all_paragraphs(doc):
 
                     paragraph = Paragraph(
                         p_element,
-                        tc
+                        doc
                     )
 
                     results.append({
