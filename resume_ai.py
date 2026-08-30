@@ -958,6 +958,7 @@ def validate_replacement_length(
     original_text,
     new_text,
     paragraph_id
+    section
 ):
     """
     Hard safety rule:
@@ -972,7 +973,12 @@ def validate_replacement_length(
         re.sub(r"\s+", " ", str(new_text)).strip()
     )
 
-    if new_len > original_len:
+    if section == "Skills":
+        max_len = original_len
+    else:
+        max_len = int(original_len * 1.20)
+
+    if new_len > max_len:
 
         raise RuntimeError(
             "Layout safety violation.\n"
@@ -1123,6 +1129,7 @@ def apply_rewrite(
             original_text,
             str(new_text),
             paragraph_id
+            section
         )
 
         # ----------------------------------------------------
