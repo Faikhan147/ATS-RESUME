@@ -923,24 +923,6 @@ RESUME STRUCTURE
         )
     )
 
-
-# ============================================================
-# REPLACE PARAGRAPH TEXT
-# ============================================================
-
-def replace_paragraph_text(
-    paragraph,
-    new_text
-):
-
-    runs = paragraph.runs
-
-    if not runs:
-
-        paragraph.add_run(new_text)
-
-        return
-
     # --------------------------------------------------------
     # Preserve the first run's character formatting.
     # --------------------------------------------------------
