@@ -1129,7 +1129,7 @@ def apply_rewrite(
         validate_replacement_length(
             original_text,
             str(new_text),
-            paragraph_id
+            paragraph_id,
             section
         )
 
