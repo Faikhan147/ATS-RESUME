@@ -560,8 +560,18 @@ table/cell paragraph_id.
 If Skills contains multiple paragraphs, return one replacement
 for each existing Skills content paragraph.
 
-The Skills heading does not need to be rewritten.
-Only the existing Skills content paragraphs must be rewritten.
+Existing Skills category headings MAY be rewritten for better
+JD/ATS alignment, but ONLY if useful.
+
+If a Skills heading is rewritten:
+
+- use its exact existing paragraph_id
+- keep it in the exact same location
+- keep the same formatting
+- do not create a new heading
+- do not delete a heading
+- do not create a new category
+- new heading text MUST NOT be longer than the original heading
 
 The Skills section MUST NOT be left unchanged.
 
@@ -673,20 +683,69 @@ paragraph_ids.
 
 The Skills replacement MUST NEVER target a random body paragraph.
 
-============================================================
-LENGTH / LAYOUT
-============================================================
+# ============================================================
+# LENGTH / LAYOUT — ABSOLUTE
+# ============================================================
 
-Keep rewritten text approximately the same length.
+The ORIGINAL resume layout is fixed.
 
-Do not increase section length by more than 20%.
+The rewritten content MUST fit inside the EXACT SAME
+physical space as the original content.
 
-Avoid unnecessary verbosity.
+For EVERY replacement:
 
-The generated text must fit naturally into the existing
-resume layout.
+- new_text MUST NOT be longer than original_text.
+- Do NOT increase character count.
+- Do NOT increase the number of lines.
+- Do NOT add extra sentences.
+- Do NOT add extra bullets.
+- Do NOT create new paragraphs.
+- Do NOT push existing content to another page.
 
-Preserve ATS friendliness.
+If more JD keywords are needed, PRIORITIZE the most relevant
+supported keywords and remove/reorder lower-priority wording.
+
+NEVER solve keyword matching by making the section longer.
+
+This rule applies to:
+
+- Professional Summary
+- Skills
+- Experience
+- Project Titles
+- Project Bullet Points
+
+The goal is:
+
+SAME SPACE + BETTER JD ALIGNMENT.
+
+NOT:
+
+MORE SPACE + MORE KEYWORDS.
+
+For Skills specifically:
+
+- Preserve every existing Skills category.
+- Keep Version Control in its original location.
+- Do not allow any Skills category to move to another page.
+- Do not create new Skills categories.
+- Do not create new Skills paragraphs.
+- Replace lower-priority skills with higher-priority supported
+  JD skills when necessary.
+- Keep the total Skills text within the original available space.
+
+Formatting must remain unchanged:
+
+- same font
+- same font size
+- same bold/underline
+- same alignment
+- same spacing
+- same table
+- same cell
+- same column
+- same margins
+- same location
 
 ============================================================
 OUTPUT FORMAT — VERY IMPORTANT
@@ -862,6 +921,39 @@ def replace_paragraph_text(
 
 
 # ============================================================
+# LENGTH SAFETY CHECK
+# ============================================================
+
+def validate_replacement_length(
+    original_text,
+    new_text,
+    paragraph_id
+):
+    """
+    Hard safety rule:
+    rewritten text must never be longer than original text.
+    """
+
+    original_len = len(
+        re.sub(r"\s+", " ", str(original_text)).strip()
+    )
+
+    new_len = len(
+        re.sub(r"\s+", " ", str(new_text)).strip()
+    )
+
+    if new_len > original_len:
+
+        raise RuntimeError(
+            "Layout safety violation.\n"
+            f"Paragraph ID: {paragraph_id}\n"
+            f"Original length: {original_len}\n"
+            f"New length: {new_len}\n"
+            "New text is longer than the original text."
+        )
+
+
+# ============================================================
 # APPLY AI REWRITE
 # ============================================================
 
@@ -992,6 +1084,16 @@ def apply_rewrite(
                 f"Replacement {paragraph_id} "
                 f"is missing new_text."
             )
+
+        # ----------------------------------------------------
+        # HARD LENGTH / LAYOUT SAFETY CHECK
+        # ----------------------------------------------------
+
+        validate_replacement_length(
+            original_text,
+            str(new_text),
+            paragraph_id
+        )
 
         # ----------------------------------------------------
         # Reject old unsafe format
