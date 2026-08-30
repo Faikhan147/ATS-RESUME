@@ -93,19 +93,17 @@ def iter_cell_paragraphs(cell, table_path):
 
 def get_all_paragraphs(doc):
     """
-    Return every paragraph that can be edited in the DOCX.
-
-    Includes:
-    - Main document paragraphs
-    - Table paragraphs
-    - Sidebar paragraphs
-    - Nested table paragraphs
+    Return every editable paragraph including:
+    - Normal document paragraphs
+    - Normal tables
+    - Nested tables
+    - Tables stored in unusual DOCX XML containers
     """
 
     results = []
 
     # --------------------------------------------------------
-    # BODY PARAGRAPHS
+    # NORMAL BODY PARAGRAPHS
     # --------------------------------------------------------
 
     for paragraph_index, paragraph in enumerate(doc.paragraphs):
@@ -120,7 +118,7 @@ def get_all_paragraphs(doc):
         })
 
     # --------------------------------------------------------
-    # TABLES
+    # NORMAL python-docx TABLES
     # --------------------------------------------------------
 
     for table_index, table in enumerate(doc.tables):
@@ -142,8 +140,77 @@ def get_all_paragraphs(doc):
                     )
                 )
 
-    return results
+    # --------------------------------------------------------
+    # RAW XML TABLES
+    # --------------------------------------------------------
+    # Some DOCX templates contain tables inside XML structures
+    # that python-docx does not expose through doc.tables.
+    #
+    # We detect those tables directly from the document XML.
+    # --------------------------------------------------------
 
+    body = doc._element.body
+
+    existing_table_elements = {
+        table._element
+        for table in doc.tables
+    }
+
+    raw_table_index = 0
+
+    for tbl in body.iter():
+
+        if tbl.tag.endswith("}tbl"):
+
+            if tbl in existing_table_elements:
+                continue
+
+            table_path = f"xml_table:{raw_table_index}"
+            raw_table_index += 1
+
+            for row_index, tr in enumerate(tbl.iter()):
+
+                if not tr.tag.endswith("}tr"):
+                    continue
+
+                cell_index = 0
+
+                for tc in tr:
+
+                    if not tc.tag.endswith("}tc"):
+                        continue
+
+                    cell_path = (
+                        f"{table_path}:r:{row_index}:c:{cell_index}"
+                    )
+
+                    cell_index += 1
+
+                    for paragraph_index, p_element in enumerate(tc.iter()):
+
+                        if not p_element.tag.endswith("}p"):
+                            continue
+
+                        paragraph = Paragraph(
+                            p_element,
+                            tc
+                        )
+
+                        results.append({
+                            "paragraph_id": (
+                                f"{cell_path}:p:{paragraph_index}"
+                            ),
+                            "location": {
+                                "type": "table_cell",
+                                "table_path": table_path,
+                                "row_index": row_index,
+                                "cell_index": cell_index - 1,
+                                "paragraph_index": paragraph_index
+                            },
+                            "paragraph": paragraph
+                        })
+
+    return results
 
 def build_paragraph_map(doc):
     """
