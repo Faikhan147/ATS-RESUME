@@ -520,15 +520,26 @@ DO NOT invent:
 MANDATORY REWRITING
 ============================================================
 
-Professional Summary MUST ALWAYS be rewritten.
+Rewrite only when the change improves ATS alignment, keyword relevance,
+clarity, or impact.
 
-Skills MUST ALWAYS be rewritten and optimized for the JD.
+Professional Summary:
+Rewrite when JD alignment can be improved.
 
-Experience MUST ALWAYS be rewritten.
+Skills:
+Rewrite when supported JD-relevant skills can be reordered or added.
 
-Project titles MUST ALWAYS be rewritten.
+Experience:
+Rewrite when bullets can be better aligned with the JD without changing facts.
 
-Project bullet points MUST ALWAYS be rewritten.
+Project Titles:
+Rewrite only when the existing title can be made more relevant without
+changing the actual project.
+
+Project Bullet Points:
+Rewrite when JD-relevant wording can be improved without changing facts.
+
+Do NOT change text merely for the sake of changing it.
 
 Even if a section already looks good,
 rewrite it to better align with the target JD.
@@ -694,13 +705,13 @@ physical space as the original content.
 
 For EVERY replacement:
 
-- new_text MUST NOT be longer than original_text.
-- Do NOT increase character count.
-- Do NOT increase the number of lines.
-- Do NOT add extra sentences.
-- Do NOT add extra bullets.
+- Keep the rewritten content close to the original physical length.
+- Do NOT create additional bullets.
 - Do NOT create new paragraphs.
-- Do NOT push existing content to another page.
+- Do NOT change document structure.
+- Do NOT intentionally make content substantially longer.
+- Prefer concise ATS-focused wording.
+- Preserve the original layout as much as possible.
 
 If more JD keywords are needed, PRIORITIZE the most relevant
 supported keywords and remove/reorder lower-priority wording.
@@ -731,9 +742,11 @@ For Skills specifically:
 - Do not create new Skills categories.
 - Do not create new Skills paragraphs.
 
-- The character length of EVERY rewritten Skills paragraph
-  MUST be less than or equal to the character length of its
-  corresponding original Skills paragraph.
+- Keep Skills paragraphs concise.
+- Do not substantially increase the original Skills paragraph length.
+- Prioritize JD-relevant supported skills.
+- Remove lower-value or redundant wording when necessary.
+- Never add unsupported skills.
 
 - NEVER make a Skills paragraph longer than its original text.
 
@@ -932,21 +945,17 @@ def replace_paragraph_text(
     # Preserve the first run's character formatting.
     # --------------------------------------------------------
 
-    runs[0].text = new_text
+def replace_paragraph_text(paragraph, new_text):
 
-    # --------------------------------------------------------
-    # Remove text from remaining runs.
-    #
-    # This keeps:
-    # - paragraph style
-    # - paragraph alignment
-    # - spacing
-    # - table position
-    # - original paragraph
-    # --------------------------------------------------------
+    if not paragraph.runs:
+        paragraph.add_run(new_text)
+        return
 
-    for run in runs[1:]:
+    first_run = paragraph.runs[0]
 
+    first_run.text = new_text
+
+    for run in paragraph.runs[1:]:
         run.text = ""
 
 
@@ -977,7 +986,7 @@ def validate_replacement_length(
     if section == "Skills":
         max_len = original_len
     else:
-        max_len = int(original_len * 1.20)
+        max_len = original_len
 
     if new_len > max_len:
         raise RuntimeError(
@@ -1423,6 +1432,44 @@ def optimize_resume(
         # ----------------------------------------------------
 
         current_docx = next_docx
+
+        # ----------------------------------------------------
+        # Evaluate optimized resume immediately
+        # ----------------------------------------------------
+
+        optimized_resume_json = f"optimized_check_{attempt}.json"
+        optimized_ats_json = f"optimized_ats_{attempt}.json"
+
+        extract_docx(
+            current_docx,
+            optimized_resume_json
+        )
+
+        ats_analysis(
+            optimized_resume_json,
+            jd_path,
+            optimized_ats_json
+        )
+
+        optimized_result = load_json(
+            optimized_ats_json
+        )
+
+        optimized_score = int(
+            optimized_result["ats_score"]
+        )
+
+        print(
+            f"Optimized ATS = {optimized_score}"
+        )
+
+        if optimized_score > best_score:
+            best_score = optimized_score
+            best_resume = current_docx
+
+            print(
+                f"New BEST optimized score: {best_score}"
+            )
 
     # --------------------------------------------------------
     # Final best resume
