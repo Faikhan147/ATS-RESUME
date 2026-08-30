@@ -730,9 +730,39 @@ For Skills specifically:
 - Do not allow any Skills category to move to another page.
 - Do not create new Skills categories.
 - Do not create new Skills paragraphs.
-- Replace lower-priority skills with higher-priority supported
-  JD skills when necessary.
-- Keep the total Skills text within the original available space.
+
+- The character length of EVERY rewritten Skills paragraph
+  MUST be less than or equal to the character length of its
+  corresponding original Skills paragraph.
+
+- NEVER make a Skills paragraph longer than its original text.
+
+- Reorder existing supported skills according to JD relevance.
+
+- Add supported skills only when they can fit by removing,
+  replacing, or reordering lower-priority skills.
+
+- Do NOT simply append new skills to the end of a Skills
+  paragraph.
+
+- Preserve important existing technology names and their
+  specific services where possible.
+
+- Do NOT remove important technology/service names merely
+  to add generic keywords.
+
+- If a JD keyword cannot fit within the existing character
+  limit, skip that keyword rather than increasing the length.
+
+- Keep each Skills category in the exact same paragraph and
+  exact same location.
+
+- Keep the total Skills section within the original available
+  physical space.
+
+- Do NOT duplicate Skills content.
+
+- Do NOT move Skills content to another paragraph or section.
 
 Formatting must remain unchanged:
 
