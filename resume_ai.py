@@ -1279,20 +1279,15 @@ def apply_rewrite(
         # Apply exact paragraph replacement
         # ----------------------------------------------------
 
-        replace_paragraph_text(
-            paragraph,
-            str(new_text)
+    replace_paragraph_text(
+        paragraph,
+        str(new_text)
+    )
+
+    if section == "Skills":
+        skills_locations.append(
+            paragraph_id
         )
-
-        # ----------------------------------------------------
-        # Skills location tracking
-        # ----------------------------------------------------
-
-        if section == "Skills":
-
-            skills_locations.append(
-                paragraph_id
-            )
 
     # --------------------------------------------------------
     # Logging
