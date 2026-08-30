@@ -1024,6 +1024,71 @@ def validate_replacement_length(
             f"Maximum allowed length: {max_len}"
         )
 
+def shorten_text_to_limit(
+    original_text,
+    new_text,
+    paragraph_id,
+    section
+):
+    original_len = len(
+        re.sub(r"\s+", " ", str(original_text)).strip()
+    )
+
+    max_len = int(original_len * 1.20)
+
+    if len(
+        re.sub(r"\s+", " ", str(new_text)).strip()
+    ) <= max_len:
+        return new_text
+
+    client = get_client()
+
+    prompt = f"""
+Rewrite ONLY the text below.
+
+Section: {section}
+
+Original text:
+{original_text}
+
+Current AI rewrite:
+{new_text}
+
+STRICT RULES:
+
+- Maximum length: {max_len} characters.
+- Rewrite it to fit within {max_len} characters.
+- Preserve the original factual meaning.
+- Preserve important ATS/JD keywords.
+- Do not invent skills, tools, metrics, achievements, or facts.
+- Do not remove important technical terms unless necessary.
+- Keep it professional and concise.
+- Return ONLY the rewritten sentence.
+"""
+
+    response = client.responses.create(
+        model=MODEL,
+        input=prompt
+    )
+
+    shortened = get_response_text(response).strip()
+
+    shortened = re.sub(
+        r"\s+",
+        " ",
+        shortened
+    ).strip()
+
+    if len(shortened) > max_len:
+        raise RuntimeError(
+            "AI could not shorten replacement within 20% limit.\n"
+            f"Paragraph ID: {paragraph_id}\n"
+            f"Section: {section}\n"
+            f"Maximum allowed length: {max_len}\n"
+            f"Returned length: {len(shortened)}"
+        )
+
+    return shortened
 
 # ============================================================
 # APPLY AI REWRITE
@@ -1170,12 +1235,34 @@ def apply_rewrite(
 
         else:
 
-            validate_replacement_length(
-                original_text,
-                str(new_text),
-                paragraph_id,
-                section
-            )
+            try:
+
+                validate_replacement_length(
+                    original_text,
+                    str(new_text),
+                    paragraph_id,
+                    section
+                )
+
+            except RuntimeError as error:
+
+                if "Layout safety violation" not in str(error):
+                    raise
+
+                print(
+                    f"20% limit exceeded for {paragraph_id}."
+                )
+
+                print(
+                    "Asking AI to shorten the rewrite..."
+                )
+
+                new_text = shorten_text_to_limit(
+                    original_text,
+                    str(new_text),
+                    paragraph_id,
+                    section
+                )
 
         # --------------------------------------------------------
         # Reject old unsafe format
