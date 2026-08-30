@@ -1276,6 +1276,11 @@ def apply_rewrite(
         # Skills location tracking
         # ----------------------------------------------------
 
+        replace_paragraph_text(
+            paragraph,
+            str(new_text)
+        )
+
         if section == "Skills":
 
             skills_locations.append(
