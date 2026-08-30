@@ -1195,130 +1195,119 @@ def apply_rewrite(
             section
         )
 
-        # ----------------------------------------------------
-        # Reject old unsafe format
-        # ----------------------------------------------------
+    # --------------------------------------------------------
+    # Reject old unsafe format
+    # --------------------------------------------------------
 
-        if "paragraph_index" in item:
+    if "paragraph_index" in item:
+
+        raise RuntimeError(
+            "Unsafe AI output detected: "
+            f"paragraph_index used for {paragraph_id}. "
+            "AI must use paragraph_id."
+        )
+
+    # --------------------------------------------------------
+    # Prevent duplicate replacement of same paragraph
+    # --------------------------------------------------------
+
+    if paragraph_id in used_paragraph_ids:
+
+        raise RuntimeError(
+            "Duplicate replacement detected for "
+            f"paragraph_id: {paragraph_id}"
+        )
+
+    used_paragraph_ids.add(
+        paragraph_id
+    )
+
+    # --------------------------------------------------------
+    # Exact paragraph existence check
+    # --------------------------------------------------------
+
+    if paragraph_id not in paragraph_map:
+
+        raise RuntimeError(
+            "AI returned an invalid paragraph_id: "
+            f"{paragraph_id}"
+        )
+
+    paragraph = paragraph_map[
+        paragraph_id
+    ]
+
+    actual_text = paragraph.text.strip()
+
+    # --------------------------------------------------------
+    # Validate original text when provided
+    # --------------------------------------------------------
+
+    if original_text:
+
+        normalized_actual = re.sub(
+            r"\s+",
+            " ",
+            actual_text
+        ).strip()
+
+        normalized_original = re.sub(
+            r"\s+",
+            " ",
+            str(original_text)
+        ).strip()
+
+        if normalized_actual != normalized_original:
 
             raise RuntimeError(
-                "Unsafe AI output detected: "
-                f"paragraph_index used for {paragraph_id}. "
-                "AI must use paragraph_id."
+                "Paragraph safety validation failed.\n"
+                f"Paragraph ID: {paragraph_id}\n"
+                f"Expected: {normalized_original[:200]}\n"
+                f"Actual:   {normalized_actual[:200]}"
             )
 
-        # ----------------------------------------------------
-        # Prevent duplicate replacement of same paragraph
-        # ----------------------------------------------------
+    # --------------------------------------------------------
+    # Apply exact paragraph replacement
+    # --------------------------------------------------------
 
-        if paragraph_id in used_paragraph_ids:
+    replace_paragraph_text(
+        paragraph,
+        str(new_text)
+    )
 
-            raise RuntimeError(
-                "Duplicate replacement detected for "
-                f"paragraph_id: {paragraph_id}"
-            )
+    # --------------------------------------------------------
+    # Skills location tracking
+    # --------------------------------------------------------
 
-        used_paragraph_ids.add(
+    if section == "Skills":
+
+        skills_locations.append(
             paragraph_id
         )
 
-        # ----------------------------------------------------
-        # Exact paragraph existence check
-        # ----------------------------------------------------
+    # --------------------------------------------------------
+    # Logging
+    # --------------------------------------------------------
 
-        if paragraph_id not in paragraph_map:
+    print(
+        "Updating:"
+    )
 
-            raise RuntimeError(
-                "AI returned an invalid paragraph_id: "
-                f"{paragraph_id}"
-            )
+    print(
+        f"  paragraph_id = {paragraph_id}"
+    )
 
-        paragraph = paragraph_map[
-            paragraph_id
-        ]
+    print(
+        f"  section      = {section}"
+    )
 
-        actual_text = paragraph.text.strip()
+    print(
+        f"  original     = {actual_text[:100]}"
+    )
 
-        # ----------------------------------------------------
-        # Validate original text when provided.
-        #
-        # This is an additional safety layer against AI
-        # accidentally targeting the wrong paragraph.
-        # ----------------------------------------------------
-
-        if original_text:
-
-            normalized_actual = re.sub(
-                r"\s+",
-                " ",
-                actual_text
-            ).strip()
-
-            normalized_original = re.sub(
-                r"\s+",
-                " ",
-                str(original_text)
-            ).strip()
-
-            if (
-                normalized_actual
-                != normalized_original
-            ):
-
-                raise RuntimeError(
-                    "Paragraph safety validation failed.\n"
-                    f"Paragraph ID: {paragraph_id}\n"
-                    f"Expected: {normalized_original[:200]}\n"
-                    f"Actual:   {normalized_actual[:200]}"
-                )
-
-        # ----------------------------------------------------
-        # Skills location tracking
-        # ----------------------------------------------------
-
-        replace_paragraph_text(
-            paragraph,
-            str(new_text)
-        )
-
-        if section == "Skills":
-
-            skills_locations.append(
-                paragraph_id
-            )
-
-        # ----------------------------------------------------
-        # Logging
-        # ----------------------------------------------------
-
-        print(
-            "Updating:"
-        )
-
-        print(
-            f"  paragraph_id = {paragraph_id}"
-        )
-
-        print(
-            f"  section      = {section}"
-        )
-
-        print(
-            f"  original     = {actual_text[:100]}"
-        )
-
-        print(
-            f"  new          = {str(new_text)[:100]}"
-        )
-
-        # ----------------------------------------------------
-        # Apply exact paragraph replacement
-        # ----------------------------------------------------
-
-        replace_paragraph_text(
-            paragraph,
-            str(new_text)
-        )
+    print(
+        f"  new          = {str(new_text)[:100]}"
+    )
 
     # --------------------------------------------------------
     # Additional Skills safety check
