@@ -963,6 +963,50 @@ def replace_paragraph_text(paragraph, new_text):
 # LENGTH SAFETY CHECK
 # ============================================================
 
+# Skills fitting function
+
+def fit_skills_to_original_length(
+    original_text,
+    new_text
+):
+    max_len = len(
+        re.sub(
+            r"\s+",
+            " ",
+            str(original_text)
+        ).strip()
+    )
+
+    new_text = re.sub(
+        r"\s+",
+        " ",
+        str(new_text)
+    ).strip()
+
+    if len(new_text) <= max_len:
+        return new_text
+
+    skills = [
+        skill.strip()
+        for skill in new_text.split(",")
+        if skill.strip()
+    ]
+
+    selected = []
+
+    for skill in skills:
+
+        candidate = ", ".join(
+            selected + [skill]
+        )
+
+        if len(candidate) <= max_len:
+            selected.append(skill)
+
+    return ", ".join(selected)
+
+# Existing function
+
 def validate_replacement_length(
     original_text,
     new_text,
@@ -1131,9 +1175,18 @@ def apply_rewrite(
                 f"is missing new_text."
             )
 
-        # ----------------------------------------------------
-        # HARD LENGTH / LAYOUT SAFETY CHECK
-        # ----------------------------------------------------
+    # --------------------------------------------------------
+    # HARD LENGTH / LAYOUT SAFETY CHECK
+    # --------------------------------------------------------
+
+    if section == "Skills":
+
+        new_text = fit_skills_to_original_length(
+            original_text,
+            str(new_text)
+        )
+
+    else:
 
         validate_replacement_length(
             original_text,
