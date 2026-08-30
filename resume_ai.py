@@ -957,12 +957,13 @@ def replace_paragraph_text(
 def validate_replacement_length(
     original_text,
     new_text,
-    paragraph_id
+    paragraph_id,
     section
 ):
     """
-    Hard safety rule:
-    rewritten text must never be longer than original text.
+    Layout safety:
+    Skills must not become longer.
+    Other sections can increase by up to 20%.
     """
 
     original_len = len(
@@ -979,13 +980,13 @@ def validate_replacement_length(
         max_len = int(original_len * 1.20)
 
     if new_len > max_len:
-
         raise RuntimeError(
             "Layout safety violation.\n"
             f"Paragraph ID: {paragraph_id}\n"
+            f"Section: {section}\n"
             f"Original length: {original_len}\n"
             f"New length: {new_len}\n"
-            "New text is longer than the original text."
+            f"Maximum allowed length: {max_len}"
         )
 
 
