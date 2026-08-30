@@ -986,8 +986,8 @@ def validate_replacement_length(
     if section == "Skills":
         max_len = original_len
     else:
-        max_len = original_len
-
+        max_len = int(original_len * 1.20)
+        
     if new_len > max_len:
         raise RuntimeError(
             "Layout safety violation.\n"
