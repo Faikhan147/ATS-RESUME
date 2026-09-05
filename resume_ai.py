@@ -569,22 +569,27 @@ If Skills is inside a table or sidebar, preserve its exact
 table/cell paragraph_id.
 
 If Skills contains multiple paragraphs, return one replacement
-for each existing Skills content paragraph.
+for each existing Skills content paragraph AND each existing Skills
+category heading/sub-heading paragraph.
 
-Existing Skills category headings MAY be rewritten for better
-JD/ATS alignment, but ONLY if useful.
+Existing Skills category headings/sub-headings are part of the Skills
+section and MUST also be evaluated for JD/ATS alignment.
 
-If a Skills heading is rewritten:
-
-- use its exact existing paragraph_id
+For EVERY existing Skills category heading/sub-heading:
+- return a replacement using its exact existing paragraph_id
+- rewrite the heading when a shorter, JD-relevant heading improves ATS alignment
+- if no better JD-relevant heading exists, return the original heading unchanged
 - keep it in the exact same location
 - keep the same formatting
 - do not create a new heading
 - do not delete a heading
 - do not create a new category
 - new heading text MUST NOT be longer than the original heading
+- NEVER expand a heading to fit more keywords
 
-The Skills section MUST NOT be left unchanged.
+The Skills section MUST NOT be left unchanged, and its category
+headings/sub-headings MUST be considered separately from the skills
+listed under them.
 
 You MUST:
 
@@ -632,6 +637,15 @@ You MUST:
     JD relevance.
 
 12. Add supported skills to the most appropriate existing category.
+
+13. Optimize the wording of existing Skills category headings/sub-headings
+    when a shorter JD-aligned heading is supported and useful.
+
+14. A Skills heading/sub-heading is NOT allowed to become longer than
+    its original text.
+
+15. If a better heading cannot fit inside the original heading length,
+    keep the ORIGINAL heading unchanged.
 
 13. Do NOT create a new Skills section.
 
@@ -929,14 +943,20 @@ RESUME STRUCTURE
 
 def replace_paragraph_text(paragraph, new_text):
 
+    # Paragraph properties (alignment, spacing, indentation, etc.) and
+    # the original paragraph/table location are never changed.
+    #
+    # For the normal one-run case, the existing run keeps its original
+    # font, size, bold/italic/underline, etc.
     if not paragraph.runs:
         paragraph.add_run(new_text)
         return
 
     first_run = paragraph.runs[0]
+    first_run.text = str(new_text)
 
-    first_run.text = new_text
-
+    # Remove old text from additional runs without changing the paragraph
+    # itself or its location.
     for run in paragraph.runs[1:]:
         run.text = ""
 
@@ -945,47 +965,33 @@ def replace_paragraph_text(paragraph, new_text):
 # LENGTH SAFETY CHECK
 # ============================================================
 
-# Skills fitting function
+# HARD same-length safety for Skills and Project Titles.
+# Never silently truncate/rebuild AI text. If it does not fit,
+# the whole candidate is rejected and BEST resume remains unchanged.
 
-def fit_skills_to_original_length(
+def validate_same_length(
     original_text,
-    new_text
+    new_text,
+    paragraph_id,
+    section
 ):
-    max_len = len(
-        re.sub(
-            r"\s+",
-            " ",
-            str(original_text)
-        ).strip()
+    original_len = len(
+        re.sub(r"\s+", " ", str(original_text)).strip()
     )
 
-    new_text = re.sub(
-        r"\s+",
-        " ",
-        str(new_text)
-    ).strip()
+    new_len = len(
+        re.sub(r"\s+", " ", str(new_text)).strip()
+    )
 
-    if len(new_text) <= max_len:
-        return new_text
-
-    skills = [
-        skill.strip()
-        for skill in new_text.split(",")
-        if skill.strip()
-    ]
-
-    selected = []
-
-    for skill in skills:
-
-        candidate = ", ".join(
-            selected + [skill]
+    if new_len > original_len:
+        raise RuntimeError(
+            "HARD SAME-LENGTH SAFETY VIOLATION.\n"
+            f"Paragraph ID: {paragraph_id}\n"
+            f"Section: {section}\n"
+            f"Original length: {original_len}\n"
+            f"New length: {new_len}\n"
+            "Candidate must be rejected; original paragraph will remain in BEST resume."
         )
-
-        if len(candidate) <= max_len:
-            selected.append(skill)
-
-    return ", ".join(selected)
 
 # Existing function
 
@@ -997,7 +1003,7 @@ def validate_replacement_length(
 ):
     """
     Layout safety:
-    Skills must not become longer.
+    Skills and Project Titles must not become longer at all.
     Other sections can increase by up to 20%.
     """
 
@@ -1009,7 +1015,7 @@ def validate_replacement_length(
         re.sub(r"\s+", " ", str(new_text)).strip()
     )
 
-    if section == "Skills":
+    if section in {"Skills", "Project Titles"}:
         max_len = original_len
     else:
         max_len = int(original_len * 1.20)
@@ -1226,11 +1232,17 @@ def apply_rewrite(
         # HARD LENGTH / LAYOUT SAFETY CHECK
         # --------------------------------------------------------
 
-        if section == "Skills":
+        if section in {"Skills", "Project Titles"}:
 
-            new_text = fit_skills_to_original_length(
+            # HARD RULE:
+            # No shortening, no truncation, no second AI rewrite.
+            # If the AI output is longer than the original paragraph,
+            # reject the candidate so BEST resume stays untouched.
+            validate_same_length(
                 original_text,
-                str(new_text)
+                str(new_text),
+                paragraph_id,
+                section
             )
 
         else:
@@ -1534,61 +1546,75 @@ def optimize_resume(
                 f"rewrite_a{attempt}_r{retry}.json"
             )
 
-            rewrite_resume(
-                best_resume,
-                resume_json,
-                jd_path,
-                rewrite_json
-            )
+            try:
 
-            # ------------------------------------------------
-            # Create candidate
-            # ------------------------------------------------
+                rewrite_resume(
+                    best_resume,
+                    resume_json,
+                    jd_path,
+                    rewrite_json
+                )
 
-            candidate_docx = (
-                f"candidate_a{attempt}_r{retry}.docx"
-            )
+                # ------------------------------------------------
+                # Create candidate
+                # ------------------------------------------------
 
-            apply_rewrite(
-                best_resume,
-                rewrite_json,
-                candidate_docx
-            )
+                candidate_docx = (
+                    f"candidate_a{attempt}_r{retry}.docx"
+                )
 
-            # ------------------------------------------------
-            # Extract candidate
-            # ------------------------------------------------
+                apply_rewrite(
+                    best_resume,
+                    rewrite_json,
+                    candidate_docx
+                )
 
-            candidate_resume_json = (
-                f"candidate_a{attempt}_r{retry}.json"
-            )
+                # ------------------------------------------------
+                # Extract candidate
+                # ------------------------------------------------
 
-            extract_docx(
-                candidate_docx,
-                candidate_resume_json
-            )
+                candidate_resume_json = (
+                    f"candidate_a{attempt}_r{retry}.json"
+                )
 
-            # ------------------------------------------------
-            # Score candidate
-            # ------------------------------------------------
+                extract_docx(
+                    candidate_docx,
+                    candidate_resume_json
+                )
 
-            candidate_ats_json = (
-                f"candidate_ats_a{attempt}_r{retry}.json"
-            )
+                # ------------------------------------------------
+                # Score candidate
+                # ------------------------------------------------
 
-            ats_analysis(
-                candidate_resume_json,
-                jd_path,
-                candidate_ats_json
-            )
+                candidate_ats_json = (
+                    f"candidate_ats_a{attempt}_r{retry}.json"
+                )
 
-            candidate_result = load_json(
-                candidate_ats_json
-            )
+                ats_analysis(
+                    candidate_resume_json,
+                    jd_path,
+                    candidate_ats_json
+                )
 
-            candidate_score = int(
-                candidate_result["ats_score"]
-            )
+                candidate_result = load_json(
+                    candidate_ats_json
+                )
+
+                candidate_score = int(
+                    candidate_result["ats_score"]
+                )
+
+            except Exception as error:
+
+                # Any structural/layout/content safety failure rejects
+                # this candidate. BEST resume is never modified here.
+                print(
+                    f"❌ CANDIDATE REJECTED: {error}"
+                )
+                print(
+                    "BEST resume remains unchanged. Retrying from SAME BEST resume..."
+                )
+                continue
 
             print(
                 f"BEST SCORE      = {best_score}"
