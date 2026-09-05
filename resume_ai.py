@@ -965,33 +965,47 @@ def replace_paragraph_text(paragraph, new_text):
 # LENGTH SAFETY CHECK
 # ============================================================
 
-# HARD same-length safety for Skills and Project Titles.
-# Never silently truncate/rebuild AI text. If it does not fit,
-# the whole candidate is rejected and BEST resume remains unchanged.
+# Skills fitting function
 
-def validate_same_length(
+def fit_skills_to_original_length(
     original_text,
-    new_text,
-    paragraph_id,
-    section
+    new_text
 ):
-    original_len = len(
-        re.sub(r"\s+", " ", str(original_text)).strip()
+    max_len = len(
+        re.sub(
+            r"\s+",
+            " ",
+            str(original_text)
+        ).strip()
     )
 
-    new_len = len(
-        re.sub(r"\s+", " ", str(new_text)).strip()
-    )
+    new_text = re.sub(
+        r"\s+",
+        " ",
+        str(new_text)
+    ).strip()
 
-    if new_len > original_len:
-        raise RuntimeError(
-            "HARD SAME-LENGTH SAFETY VIOLATION.\n"
-            f"Paragraph ID: {paragraph_id}\n"
-            f"Section: {section}\n"
-            f"Original length: {original_len}\n"
-            f"New length: {new_len}\n"
-            "Candidate must be rejected; original paragraph will remain in BEST resume."
+    if len(new_text) <= max_len:
+        return new_text
+
+    skills = [
+        skill.strip()
+        for skill in new_text.split(",")
+        if skill.strip()
+    ]
+
+    selected = []
+
+    for skill in skills:
+
+        candidate = ", ".join(
+            selected + [skill]
         )
+
+        if len(candidate) <= max_len:
+            selected.append(skill)
+
+    return ", ".join(selected)
 
 # Existing function
 
@@ -1003,7 +1017,7 @@ def validate_replacement_length(
 ):
     """
     Layout safety:
-    Skills and Project Titles must not become longer at all.
+    Skills must not become longer.
     Other sections can increase by up to 20%.
     """
 
@@ -1015,7 +1029,7 @@ def validate_replacement_length(
         re.sub(r"\s+", " ", str(new_text)).strip()
     )
 
-    if section in {"Skills", "Project Titles"}:
+    if section == "Skills":
         max_len = original_len
     else:
         max_len = int(original_len * 1.20)
@@ -1232,17 +1246,11 @@ def apply_rewrite(
         # HARD LENGTH / LAYOUT SAFETY CHECK
         # --------------------------------------------------------
 
-        if section in {"Skills", "Project Titles"}:
+        if section == "Skills":
 
-            # HARD RULE:
-            # No shortening, no truncation, no second AI rewrite.
-            # If the AI output is longer than the original paragraph,
-            # reject the candidate so BEST resume stays untouched.
-            validate_same_length(
+            new_text = fit_skills_to_original_length(
                 original_text,
-                str(new_text),
-                paragraph_id,
-                section
+                str(new_text)
             )
 
         else:
