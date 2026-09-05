@@ -1421,13 +1421,71 @@ def optimize_resume(
     original_docx,
     jd_path,
     target_score=80,
-    max_attempts=3
+    max_attempts=5
 ):
+    """
+    Optimize resume using hill-climbing logic.
+
+    Rules:
+    1. Always keep the best accepted resume.
+    2. Generate a candidate from the current best resume.
+    3. Evaluate candidate.
+    4. Accept candidate ONLY if score is strictly higher.
+    5. If candidate score is lower/equal, reject it.
+    6. Next attempt always starts from the best accepted resume.
+    """
 
     current_docx = original_docx
 
-    best_score = 0
-    best_resume = original_docx
+    # ------------------------------------------------------------
+    # Initial baseline
+    # ------------------------------------------------------------
+
+    resume_json = "resume_baseline.json"
+    ats_json = "ats_baseline.json"
+
+    extract_docx(
+        current_docx,
+        resume_json
+    )
+
+    ats_analysis(
+        resume_json,
+        jd_path,
+        ats_json
+    )
+
+    baseline_result = load_json(
+        ats_json
+    )
+
+    best_score = int(
+        baseline_result["ats_score"]
+    )
+
+    best_resume = current_docx
+
+    print(
+        f"\nINITIAL BEST SCORE = {best_score}"
+    )
+
+    # ------------------------------------------------------------
+    # Target already reached
+    # ------------------------------------------------------------
+
+    if best_score >= target_score:
+        print("TARGET ALREADY REACHED")
+
+        shutil.copy(
+            best_resume,
+            "best_resume.docx"
+        )
+
+        return
+
+    # ------------------------------------------------------------
+    # Optimization loop
+    # ------------------------------------------------------------
 
     for attempt in range(
         1,
@@ -1447,12 +1505,27 @@ def optimize_resume(
             "=" * 60
         )
 
-        # ----------------------------------------------------
-        # Extract
-        # ----------------------------------------------------
+        print(
+            f"CURRENT BEST SCORE = {best_score}"
+        )
+
+        print(
+            f"CURRENT BEST RESUME = {best_resume}"
+        )
+
+        # --------------------------------------------------------
+        # IMPORTANT:
+        # Always start from the best accepted resume.
+        # --------------------------------------------------------
+
+        current_docx = best_resume
+
+        # --------------------------------------------------------
+        # Extract current best resume
+        # --------------------------------------------------------
 
         resume_json = (
-            f"resume_{attempt}.json"
+            f"resume_attempt_{attempt}.json"
         )
 
         extract_docx(
@@ -1460,63 +1533,12 @@ def optimize_resume(
             resume_json
         )
 
-        # ----------------------------------------------------
-        # ATS
-        # ----------------------------------------------------
-
-        ats_json = (
-            f"ats_{attempt}.json"
-        )
-
-        ats_analysis(
-            resume_json,
-            jd_path,
-            ats_json
-        )
-
-        result = load_json(
-            ats_json
-        )
-
-        score = int(
-            result["ats_score"]
-        )
-
-        print(
-            f"ATS = {score}"
-        )
-
-        # ----------------------------------------------------
-        # Best resume tracking
-        # ----------------------------------------------------
-
-        if score > best_score:
-
-            best_score = score
-            best_resume = current_docx
-
-            print(
-                f"New BEST score: {best_score}"
-            )
-
-        # ----------------------------------------------------
-        # Target reached
-        # ----------------------------------------------------
-
-        if score >= target_score:
-
-            print(
-                "TARGET REACHED"
-            )
-
-            break
-
-        # ----------------------------------------------------
-        # Rewrite
-        # ----------------------------------------------------
+        # --------------------------------------------------------
+        # Rewrite current BEST resume
+        # --------------------------------------------------------
 
         rewrite_json = (
-            f"rewrite_{attempt}.json"
+            f"rewrite_attempt_{attempt}.json"
         )
 
         rewrite_resume(
@@ -1526,67 +1548,100 @@ def optimize_resume(
             rewrite_json
         )
 
-        # ----------------------------------------------------
-        # Apply
-        # ----------------------------------------------------
+        # --------------------------------------------------------
+        # Apply AI rewrite
+        # --------------------------------------------------------
 
-        next_docx = (
-            f"resume_optimized_{attempt}.docx"
+        candidate_docx = (
+            f"resume_candidate_{attempt}.docx"
         )
 
         apply_rewrite(
             current_docx,
             rewrite_json,
-            next_docx
+            candidate_docx
         )
 
-        # ----------------------------------------------------
-        # Continue with optimized resume
-        # ----------------------------------------------------
+        # --------------------------------------------------------
+        # Evaluate candidate
+        # --------------------------------------------------------
 
-        current_docx = next_docx
+        candidate_resume_json = (
+            f"candidate_resume_{attempt}.json"
+        )
 
-        # ----------------------------------------------------
-        # Evaluate optimized resume immediately
-        # ----------------------------------------------------
-
-        optimized_resume_json = f"optimized_check_{attempt}.json"
-        optimized_ats_json = f"optimized_ats_{attempt}.json"
+        candidate_ats_json = (
+            f"candidate_ats_{attempt}.json"
+        )
 
         extract_docx(
-            current_docx,
-            optimized_resume_json
+            candidate_docx,
+            candidate_resume_json
         )
 
         ats_analysis(
-            optimized_resume_json,
+            candidate_resume_json,
             jd_path,
-            optimized_ats_json
+            candidate_ats_json
         )
 
-        optimized_result = load_json(
-            optimized_ats_json
+        candidate_result = load_json(
+            candidate_ats_json
         )
 
-        optimized_score = int(
-            optimized_result["ats_score"]
+        candidate_score = int(
+            candidate_result["ats_score"]
         )
 
         print(
-            f"Optimized ATS = {optimized_score}"
+            f"\nCURRENT BEST = {best_score}"
         )
 
-        if optimized_score > best_score:
-            best_score = optimized_score
-            best_resume = current_docx
+        print(
+            f"CANDIDATE    = {candidate_score}"
+        )
+
+        # --------------------------------------------------------
+        # ACCEPT ONLY IF STRICTLY BETTER
+        # --------------------------------------------------------
+
+        if candidate_score > best_score:
 
             print(
-                f"New BEST optimized score: {best_score}"
+                f"✅ ACCEPTED: "
+                f"{best_score} → {candidate_score}"
             )
 
-    # --------------------------------------------------------
+            best_score = candidate_score
+
+            best_resume = candidate_docx
+
+            # ----------------------------------------------------
+            # Target reached
+            # ----------------------------------------------------
+
+            if best_score >= target_score:
+
+                print(
+                    f"\n🎯 TARGET REACHED: {best_score}"
+                )
+
+                break
+
+        else:
+
+            print(
+                f"❌ REJECTED: "
+                f"{candidate_score} <= {best_score}"
+            )
+
+            print(
+                "Keeping previous BEST resume."
+            )
+
+    # ------------------------------------------------------------
     # Final best resume
-    # --------------------------------------------------------
+    # ------------------------------------------------------------
 
     shutil.copy(
         best_resume,
@@ -1603,13 +1658,12 @@ def optimize_resume(
     )
 
     print(
-        f"BEST RESUME = best_resume.docx"
+        "BEST RESUME = best_resume.docx"
     )
 
     print(
         "=" * 60
     )
-
 
 # ============================================================
 # MAIN
