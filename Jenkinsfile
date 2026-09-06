@@ -30,7 +30,7 @@ pipeline {
                         ats_*.json \
                         rewrite_*.json \
                         resume_optimized_*.docx \
-                        best_resume.docx \
+                        Faisal_Khan_*.docx \
                         jd.txt
 
                     mkdir -p output
@@ -192,11 +192,16 @@ pipeline {
                         resume_original.docx \
                         jd.txt
 
-                    test -f best_resume.docx
+                    FINAL_DOCX=$(find . -maxdepth 1 -type f -name 'Faisal_Khan_*.docx' | head -n 1)
+
+                    test -n "$FINAL_DOCX" || {
+                        echo "ERROR: Final job-title-based DOCX not found"
+                        exit 1
+                    }
 
                     echo ""
                     echo "Best resume generated:"
-                    ls -lh best_resume.docx
+                    ls -lh "$FINAL_DOCX"
                 '''
             }
         }
@@ -211,13 +216,22 @@ pipeline {
                     echo "PREPARING FINAL RESUME"
                     echo "======================================"
 
-                    cp best_resume.docx output/resume_final.docx
+                    FINAL_DOCX=$(find . -maxdepth 1 -type f -name 'Faisal_Khan_*.docx' | head -n 1)
 
-                    test -f output/resume_final.docx
+                    test -n "$FINAL_DOCX" || {
+                        echo "ERROR: Final DOCX not found"
+                        exit 1
+                    }
+
+                    FINAL_BASENAME=$(basename "$FINAL_DOCX")
+
+                    cp "$FINAL_DOCX" "output/$FINAL_BASENAME"
+
+                    test -f "output/$FINAL_BASENAME"
 
                     echo ""
                     echo "Final DOCX:"
-                    ls -lh output/resume_final.docx
+                    ls -lh "output/$FINAL_BASENAME"
                 '''
             }
         }
@@ -295,13 +309,25 @@ pipeline {
                     echo "CONVERTING DOCX TO PDF"
                     echo "======================================"
 
+                    FINAL_DOCX=$(find output -maxdepth 1 -type f -name 'Faisal_Khan_*.docx' | head -n 1)
+
+                    test -n "$FINAL_DOCX" || {
+                        echo "ERROR: Final DOCX not found in output/"
+                        exit 1
+                    }
+
                     libreoffice \
                         --headless \
                         --convert-to pdf \
                         --outdir output \
-                        output/resume_final.docx
+                        "$FINAL_DOCX"
 
-                    test -f output/resume_final.pdf
+                    FINAL_PDF="${FINAL_DOCX%.docx}.pdf"
+
+                    test -f "$FINAL_PDF" || {
+                        echo "ERROR: PDF conversion failed"
+                        exit 1
+                    }
 
                     echo ""
                     echo "Generated files:"
@@ -314,11 +340,10 @@ pipeline {
         stage('Archive Resume') {
             steps {
                 archiveArtifacts artifacts:
-                    'output/resume_final.docx,' +
-                    'output/resume_final.pdf,' +
+                    'output/Faisal_Khan_*.docx,' +
+                    'output/Faisal_Khan_*.pdf,' +
                     'final_ats_result.json,' +
-                    'ats_initial.json,' +
-                    'best_resume.docx',
+                    'ats_initial.json',
                     fingerprint: true
             }
         }
@@ -337,11 +362,11 @@ pipeline {
 
             echo ""
             echo "Final Resume:"
-            echo "output/resume_final.docx"
+            echo "output/Faisal_Khan_*.docx"
 
             echo ""
             echo "Final PDF:"
-            echo "output/resume_final.pdf"
+            echo "output/Faisal_Khan_*.pdf"
         }
 
         failure {
