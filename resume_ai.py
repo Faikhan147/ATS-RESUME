@@ -38,6 +38,74 @@ def get_client():
 
     return OpenAI(api_key=api_key)
 
+def extract_job_title(jd_path):
+
+    with open(
+        jd_path,
+        "r",
+        encoding="utf-8"
+    ) as f:
+        jd = f.read()
+
+    prompt = f"""
+Extract the primary job title from this job description.
+
+Rules:
+- Return ONLY the job title.
+- Do not add explanations.
+- Do not create a new title.
+- Prefer the official job title from the JD.
+- Preserve important terms such as AWS, DevOps, Cloud,
+  Kubernetes, Linux, etc.
+
+JOB DESCRIPTION:
+
+{jd}
+"""
+
+    client = get_client()
+
+    response = client.responses.create(
+        model=MODEL,
+        input=prompt
+    )
+
+    job_title = get_response_text(response).strip()
+
+    job_title = re.sub(
+        r"\s+",
+        " ",
+        job_title
+    ).strip()
+
+    if not job_title:
+        raise RuntimeError(
+            "Could not extract job title from JD."
+        )
+
+    print(
+        f"JOB TITLE = {job_title}"
+    )
+
+    return job_title
+
+
+def sanitize_job_title_for_filename(job_title):
+
+    job_title = re.sub(
+        r"[^\w\s-]",
+        "",
+        job_title
+    )
+
+    job_title = re.sub(
+        r"\s+",
+        "_",
+        job_title.strip()
+    )
+
+    return job_title
+
 
 # ============================================================
 # DOCX PARAGRAPH HELPERS
@@ -1110,6 +1178,71 @@ STRICT RULES:
 
     return shortened
 
+
+def update_resume_headline(
+    original_docx,
+    job_title,
+    output_docx
+):
+
+    doc = Document(original_docx)
+
+    all_paragraphs = get_all_paragraphs(doc)
+
+    name_found = False
+
+    for item in all_paragraphs:
+
+        paragraph = item["paragraph"]
+
+        text = re.sub(
+            r"\s+",
+            " ",
+            paragraph.text
+        ).strip()
+
+        if not text:
+            continue
+
+        if text.upper() == "FAISAL KHAN":
+
+            name_found = True
+            continue
+
+        if name_found:
+
+            print(
+                "Updating headline:"
+            )
+
+            print(
+                f"  paragraph_id = "
+                f"{item['paragraph_id']}"
+            )
+
+            print(
+                f"  original     = {text}"
+            )
+
+            print(
+                f"  new          = {job_title}"
+            )
+
+            replace_paragraph_text(
+                paragraph,
+                job_title
+            )
+
+            doc.save(
+                output_docx
+            )
+
+            return
+
+    raise RuntimeError(
+        "Could not find headline after candidate name."
+    )
+
 # ============================================================
 # APPLY AI REWRITE
 # ============================================================
@@ -1445,6 +1578,11 @@ def optimize_resume(
     max_retries=5
 ):
 
+    # Extract actual Job Title from JD
+    job_title = extract_job_title(
+        jd_path
+    )
+
     best_resume = original_docx
 
     # ========================================================
@@ -1485,18 +1623,28 @@ def optimize_resume(
     # TARGET ALREADY REACHED
     # ========================================================
 
-    if best_score >= target_score:
+if best_score >= target_score:
 
-        shutil.copy(
-            best_resume,
-            "best_resume.docx"
-        )
+    final_filename = (
+        f"Faisal_Khan_"
+        f"{sanitize_job_title_for_filename(job_title)}.docx"
+    )
 
-        print(
-            "TARGET ALREADY REACHED"
-        )
+    update_resume_headline(
+        best_resume,
+        job_title,
+        final_filename
+    )
 
-        return
+    print(
+        "TARGET ALREADY REACHED"
+    )
+
+    print(
+        f"FINAL RESUME = {final_filename}"
+    )
+
+    return
 
     # ========================================================
     # ATTEMPTS
@@ -1723,26 +1871,32 @@ def optimize_resume(
 
             break
 
-    # ========================================================
-    # FINAL BEST RESUME
-    # ========================================================
+# ========================================================
+# FINAL RESUME
+# ========================================================
 
-    shutil.copy(
-        best_resume,
-        "best_resume.docx"
-    )
+final_filename = (
+    f"Faisal_Khan_"
+    f"{sanitize_job_title_for_filename(job_title)}.docx"
+)
 
-    print("\n" + "=" * 60)
+update_resume_headline(
+    best_resume,
+    job_title,
+    final_filename
+)
 
-    print(
-        f"BEST ATS SCORE = {best_score}"
-    )
+print("\n" + "=" * 60)
 
-    print(
-        "BEST RESUME = best_resume.docx"
-    )
+print(
+    f"BEST ATS SCORE = {best_score}"
+)
 
-    print("=" * 60)
+print(
+    f"FINAL RESUME = {final_filename}"
+)
+
+print("=" * 60)
 
 # ============================================================
 # MAIN
