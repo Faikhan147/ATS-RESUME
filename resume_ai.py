@@ -1164,19 +1164,15 @@ Rules:
 - If relevance is similar, preserve original order.
 """
 
-    response = client.chat.completions.create(
+    client = get_client()
+
+    response = client.responses.create(
         model=MODEL,
-        messages=[
-            {
-                "role": "user",
-                "content": prompt
-            }
-        ],
-        temperature=0
+        input=prompt
     )
 
     result = json.loads(
-        response.choices[0].message.content
+        response.output_text.strip()
     )
 
     ordered_names = result.get(
