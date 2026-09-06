@@ -1075,6 +1075,210 @@ def fit_skills_to_original_length(
 
     return ", ".join(selected)
 
+def reorder_skills_by_jd(doc, jd_text, skills_locations):
+
+    skills_ids = set(skills_locations)
+
+    all_paragraphs = get_all_paragraphs(doc)
+
+    skill_paragraphs = [
+        item for item in all_paragraphs
+        if item["paragraph_id"] in skills_ids
+    ]
+
+    # Find heading + value pairs
+    blocks = []
+
+    for i, item in enumerate(skill_paragraphs):
+
+        heading = item["paragraph"]
+        heading_text = heading.text.strip()
+
+        # SKILLS: itself must never move
+        if heading_text.upper() == "SKILLS:":
+            continue
+
+        # Category heading
+        if not (
+            heading_text.endswith(":")
+            and "," not in heading_text
+        ):
+            continue
+
+        if i + 1 >= len(skill_paragraphs):
+            continue
+
+        value = skill_paragraphs[i + 1]["paragraph"]
+
+        # Heading and value must belong to same XML parent
+        if heading._p.getparent() is not value._p.getparent():
+            continue
+
+        parent = heading._p.getparent()
+
+        try:
+            h_index = parent.index(heading._p)
+            v_index = parent.index(value._p)
+        except ValueError:
+            continue
+
+        # Must be heading immediately followed by value
+        if v_index != h_index + 1:
+            continue
+
+        blocks.append({
+            "heading": heading,
+            "value": value,
+            "heading_text": heading_text,
+            "parent": parent
+        })
+
+    if len(blocks) < 2:
+        return
+
+    # Ask AI only for ordering
+    prompt = f"""
+You are ranking existing resume Skills categories.
+
+JOB DESCRIPTION:
+{jd_text}
+
+EXISTING SKILLS CATEGORIES:
+{json.dumps([b["heading_text"] for b in blocks], ensure_ascii=False)}
+
+Return ONLY valid JSON:
+
+{{
+  "ordered_headings": [
+    "exact existing heading",
+    "exact existing heading"
+  ]
+}}
+
+Rules:
+- Use ONLY the existing headings.
+- Do NOT rename any heading.
+- Do NOT add any heading.
+- Do NOT remove any heading.
+- Rank by relevance to the job description.
+- If relevance is similar, preserve original order.
+"""
+
+    response = client.chat.completions.create(
+        model=MODEL,
+        messages=[
+            {
+                "role": "user",
+                "content": prompt
+            }
+        ],
+        temperature=0
+    )
+
+    result = json.loads(
+        response.choices[0].message.content
+    )
+
+    ordered_names = result.get(
+        "ordered_headings",
+        []
+    )
+
+    rank = {
+        name.strip(): i
+        for i, name in enumerate(ordered_names)
+    }
+
+    # Group blocks by their XML parent
+    groups = {}
+
+    for block in blocks:
+        parent_id = id(block["parent"])
+
+        groups.setdefault(
+            parent_id,
+            {
+                "parent": block["parent"],
+                "blocks": []
+            }
+        )["blocks"].append(block)
+
+    # Reorder inside each XML container
+    for group in groups.values():
+
+        parent = group["parent"]
+        group_blocks = group["blocks"]
+
+        original_children = list(parent)
+
+        slots = []
+
+        for block in group_blocks:
+
+            h = block["heading"]
+            v = block["value"]
+
+            h_index = original_children.index(h._p)
+            v_index = original_children.index(v._p)
+
+            slots.append(
+                (h_index, v_index)
+            )
+
+        slots.sort()
+
+        ordered_blocks = sorted(
+            group_blocks,
+            key=lambda b: rank.get(
+                b["heading_text"].strip(),
+                len(rank) + group_blocks.index(b)
+            )
+        )
+
+        replacements = {}
+
+        for slot, block in zip(
+            slots,
+            ordered_blocks
+        ):
+            h_index, v_index = slot
+
+            replacements[h_index] = [
+                block["heading"]._p,
+                block["value"]._p
+            ]
+
+        new_children = []
+
+        i = 0
+
+        while i < len(original_children):
+
+            if i in replacements:
+
+                new_children.extend(
+                    replacements[i]
+                )
+
+                i += 2
+
+            else:
+
+                new_children.append(
+                    original_children[i]
+                )
+
+                i += 1
+
+        # Rebuild same XML container
+        for child in list(parent):
+            parent.remove(child)
+
+        for child in new_children:
+            parent.append(child)
+
+    print("Skills category blocks reordered according to JD.")
+
 # Existing function
 
 def validate_replacement_length(
@@ -1250,7 +1454,8 @@ def update_resume_headline(
 def apply_rewrite(
     original_docx,
     rewritten_json,
-    output_docx
+    output_docx,
+    jd_path=None
 ):
 
     doc = Document(original_docx)
@@ -1592,6 +1797,24 @@ def apply_rewrite(
             f"{location.text[:80]}"
         )
 
+    # --------------------------------------------------------
+    # Reorder Skills category blocks according to JD
+    # --------------------------------------------------------
+
+    if jd_path:
+
+        with open(
+            jd_path,
+            "r",
+            encoding="utf-8"
+        ) as f:
+            jd_text = f.read()
+
+        reorder_skills_by_jd(
+            doc,
+            jd_text,
+            skills_locations
+        )
 
     # --------------------------------------------------------
     # Save output
@@ -1762,7 +1985,8 @@ def optimize_resume(
                 apply_rewrite(
                     best_resume,
                     rewrite_json,
-                    candidate_docx
+                    candidate_docx,
+                    jd_path
                 )
 
                 # ------------------------------------------------
