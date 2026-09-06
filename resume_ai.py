@@ -366,6 +366,33 @@ def clean_json_text(text):
 
     return text
 
+def get_valid_json_response(client, prompt):
+
+    while True:
+
+        response = client.responses.create(
+            model=MODEL,
+            input=prompt
+        )
+
+        raw_text = get_response_text(response)
+
+        try:
+            text = clean_json_text(raw_text)
+            return json.loads(text)
+
+        except json.JSONDecodeError as error:
+
+            print("❌ INVALID AI JSON RESPONSE:")
+            print(raw_text)
+
+            print(
+                "🔄 INVALID JSON DETECTED. "
+                "REPEATING SAME AI REQUEST..."
+            )
+
+            continue
+
 
 # ============================================================
 # ATS ANALYSIS
@@ -444,20 +471,10 @@ RESUME:
 
     client = get_client()
 
-    response = client.responses.create(
-        model=MODEL,
-        input=prompt
+    result = get_valid_json_response(
+        client,
+        prompt
     )
-
-    raw_text = get_response_text(response)
-
-    try:
-        text = clean_json_text(raw_text)
-        result = json.loads(text)
-    except json.JSONDecodeError as error:
-        print("❌ INVALID AI JSON RESPONSE:")
-        print(raw_text)
-        raise error
 
     if "ats_score" not in result:
 
@@ -972,20 +989,10 @@ RESUME STRUCTURE
 
     client = get_client()
 
-    response = client.responses.create(
-        model=MODEL,
-        input=prompt
+    result = get_valid_json_response(
+        client,
+        prompt
     )
-
-    raw_text = get_response_text(response)
-
-    try:
-        text = clean_json_text(raw_text)
-        result = json.loads(text)
-    except json.JSONDecodeError as error:
-        print("❌ INVALID AI JSON RESPONSE:")
-        print(raw_text)
-        raise error
 
     if "replacements" not in result:
         raise RuntimeError(
@@ -1174,19 +1181,10 @@ Rules:
 
     client = get_client()
 
-    response = client.responses.create(
-        model=MODEL,
-        input=prompt
+    result = get_valid_json_response(
+        client,
+        prompt
     )
-
-    raw_text = response.output_text.strip()
-
-    try:
-        result = json.loads(raw_text)
-    except json.JSONDecodeError as error:
-        print("❌ INVALID AI JSON RESPONSE:")
-        print(raw_text)
-        raise error
 
     ordered_names = result.get(
         "ordered_headings",
