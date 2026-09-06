@@ -1623,28 +1623,28 @@ def optimize_resume(
     # TARGET ALREADY REACHED
     # ========================================================
 
-if best_score >= target_score:
+    if best_score >= target_score:
 
-    final_filename = (
-        f"Faisal_Khan_"
-        f"{sanitize_job_title_for_filename(job_title)}.docx"
-    )
+        final_filename = (
+            f"Faisal_Khan_"
+            f"{sanitize_job_title_for_filename(job_title)}.docx"
+        )
 
-    update_resume_headline(
-        best_resume,
-        job_title,
-        final_filename
-    )
+        update_resume_headline(
+            best_resume,
+            job_title,
+            final_filename
+        )
 
-    print(
-        "TARGET ALREADY REACHED"
-    )
+        print(
+            "TARGET ALREADY REACHED"
+        )
 
-    print(
-        f"FINAL RESUME = {final_filename}"
-    )
+        print(
+            f"FINAL RESUME = {final_filename}"
+        )
 
-    return
+        return
 
     # ========================================================
     # ATTEMPTS
