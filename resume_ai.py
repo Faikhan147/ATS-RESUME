@@ -1871,32 +1871,33 @@ def optimize_resume(
 
             break
 
-# ========================================================
-# FINAL RESUME
-# ========================================================
+    # ========================================================
+    # FINAL RESUME
+    # ========================================================
 
-final_filename = (
-    f"Faisal_Khan_"
-    f"{sanitize_job_title_for_filename(job_title)}.docx"
-)
+    final_filename = (
+        f"Faisal_Khan_"
+        f"{sanitize_job_title_for_filename(job_title)}.docx"
+    )
 
-update_resume_headline(
-    best_resume,
-    job_title,
-    final_filename
-)
+    update_resume_headline(
+        best_resume,
+        job_title,
+        final_filename
+    )
 
-print("\n" + "=" * 60)
+    print("\n" + "=" * 60)
 
-print(
-    f"BEST ATS SCORE = {best_score}"
-)
+    print(
+        f"BEST ATS SCORE = {best_score}"
+    )
 
-print(
-    f"FINAL RESUME = {final_filename}"
-)
+    print(
+        f"FINAL RESUME = {final_filename}"
+    )
 
-print("=" * 60)
+    print("=" * 60)
+
 
 # ============================================================
 # MAIN
