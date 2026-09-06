@@ -449,11 +449,15 @@ RESUME:
         input=prompt
     )
 
-    text = clean_json_text(
-        get_response_text(response)
-    )
+    raw_text = get_response_text(response)
 
-    result = json.loads(text)
+    try:
+        text = clean_json_text(raw_text)
+        result = json.loads(text)
+    except json.JSONDecodeError as error:
+        print("❌ INVALID AI JSON RESPONSE:")
+        print(raw_text)
+        raise error
 
     if "ats_score" not in result:
 
@@ -973,11 +977,15 @@ RESUME STRUCTURE
         input=prompt
     )
 
-    text = clean_json_text(
-        get_response_text(response)
-    )
+    raw_text = get_response_text(response)
 
-    result = json.loads(text)
+    try:
+        text = clean_json_text(raw_text)
+        result = json.loads(text)
+    except json.JSONDecodeError as error:
+        print("❌ INVALID AI JSON RESPONSE:")
+        print(raw_text)
+        raise error
 
     if "replacements" not in result:
         raise RuntimeError(
@@ -1171,9 +1179,14 @@ Rules:
         input=prompt
     )
 
-    result = json.loads(
-        response.output_text.strip()
-    )
+    raw_text = response.output_text.strip()
+
+    try:
+        result = json.loads(raw_text)
+    except json.JSONDecodeError as error:
+        print("❌ INVALID AI JSON RESPONSE:")
+        print(raw_text)
+        raise error
 
     ordered_names = result.get(
         "ordered_headings",
