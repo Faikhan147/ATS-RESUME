@@ -246,8 +246,18 @@ pipeline {
                     echo "ANALYZING FINAL RESUME"
                     echo "======================================"
 
+                    FINAL_DOCX=$(find output -maxdepth 1 -type f -name 'Faisal_Khan_*.docx' | head -n 1)
+
+                    test -n "$FINAL_DOCX" || {
+                        echo "ERROR: Final DOCX not found in output/"
+                        exit 1
+                    }
+
+                    echo "Final DOCX:"
+                    echo "$FINAL_DOCX"
+
                     python3 resume_ai.py extract \
-                        output/resume_final.docx \
+                        "$FINAL_DOCX" \
                         final_resume_content.json
 
                     test -s final_resume_content.json
