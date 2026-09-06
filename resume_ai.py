@@ -1381,10 +1381,51 @@ def apply_rewrite(
 
         if section == "Skills":
 
-            new_text = fit_skills_to_original_length(
-                original_text,
-                str(new_text)
-            )
+            # ----------------------------------------------------
+            # Skills category heading
+            # Example:
+            # Cloud & DevOps:
+            # Networking:
+            # Linux Administration:
+            # ----------------------------------------------------
+
+            if (
+                original_text.strip().endswith(":")
+                and "," not in original_text
+            ):
+
+                # Heading can ONLY stay same length or become shorter.
+                # If AI suggests a longer heading, keep original.
+                if len(str(new_text).strip()) > len(original_text.strip()):
+
+                    print(
+                        f"Keeping original Skills heading for {paragraph_id}: "
+                        f"'{original_text}'"
+                    )
+
+                    new_text = original_text.strip()
+
+                else:
+
+                    print(
+                        f"Updating Skills heading for {paragraph_id}: "
+                        f"'{original_text}' -> '{str(new_text).strip()}'"
+                    )
+
+                    new_text = str(new_text).strip()
+
+            # ----------------------------------------------------
+            # Skills values
+            # Example:
+            # AWS, Docker, Jenkins, Kubernetes
+            # ----------------------------------------------------
+
+            else:
+
+                new_text = fit_skills_to_original_length(
+                    original_text,
+                    str(new_text)
+                )
 
         else:
 
@@ -1416,7 +1457,6 @@ def apply_rewrite(
                     paragraph_id,
                     section
                 )
-
         # --------------------------------------------------------
         # Reject old unsafe format
         # --------------------------------------------------------
