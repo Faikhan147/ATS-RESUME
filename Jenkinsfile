@@ -355,8 +355,8 @@ pipeline {
             steps {
                 withCredentials([
                     file(
-                        credentialsId: 'google-drive-service-account',
-                        variable: 'GOOGLE_APPLICATION_CREDENTIALS'
+                        credentialsId: 'google-drive-oauth-token',
+                        variable: 'GOOGLE_DRIVE_TOKEN_FILE'
                     )
                 ]) {
                     sh '''
