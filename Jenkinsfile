@@ -102,7 +102,10 @@ pipeline {
                         --break-system-packages \
                         --upgrade \
                         openai \
-                        python-docx
+                        python-docx \
+                        google-api-python-client \
+                        google-auth \
+                        google-auth-httplib2
                 '''
             }
         }
