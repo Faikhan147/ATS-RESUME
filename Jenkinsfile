@@ -14,6 +14,7 @@ pipeline {
     environment {
         OPENAI_API_KEY = credentials('openai-api-key')
         AI_MODEL = 'gpt-5.6-luna'
+        GOOGLE_DRIVE_ROOT_FOLDER_ID = '1P_rTatVWgU6RdkKFBkEe7PU6oPdNHpl7'
     }
 
     stages {
@@ -348,6 +349,48 @@ pipeline {
                 '''
             }
         }
+
+
+        stage('Upload to Google Drive') {
+            steps {
+                withCredentials([
+                    file(
+                        credentialsId: 'google-drive-service-account',
+                        variable: 'GOOGLE_APPLICATION_CREDENTIALS'
+                    )
+                ]) {
+                    sh '''
+                        set -e
+
+                        echo "======================================"
+                        echo "UPLOADING RESUME TO GOOGLE DRIVE"
+                        echo "======================================"
+
+                        FINAL_PDF=$(find output -maxdepth 1 -type f -name 'Faisal_Khan_*.pdf' | head -n 1)
+
+                        test -n "$FINAL_PDF" || {
+                            echo "ERROR: Final PDF not found in output/"
+                            exit 1
+                        }
+
+                        test -f "$FINAL_PDF" || {
+                            echo "ERROR: Final PDF file does not exist"
+                            exit 1
+                        }
+
+                        test -n "$GOOGLE_DRIVE_ROOT_FOLDER_ID" || {
+                            echo "ERROR: GOOGLE_DRIVE_ROOT_FOLDER_ID is not set"
+                            exit 1
+                        }
+
+                        python3 google_drive.py \
+                            jd.txt \
+                            "$FINAL_PDF" \
+                            "$GOOGLE_DRIVE_ROOT_FOLDER_ID"
+                    '''
+                }
+            }
+        }  
 
 
         stage('Archive Resume') {
