@@ -14,7 +14,7 @@ pipeline {
     environment {
         OPENAI_API_KEY = credentials('openai-api-key')
         AI_MODEL = 'gpt-5.6-luna'
-        GOOGLE_DRIVE_ROOT_FOLDER_ID = '1P_rTatVWgU6RdkKFBkEe7PU6oPdNHpl7'
+        GOOGLE_DRIVE_ROOT_FOLDER_ID = '1oamZ7TquiGO3tMEb1TzhHeEUuwI2zhWz'
     }
 
     stages {
