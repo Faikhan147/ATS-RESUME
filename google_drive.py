@@ -2,7 +2,8 @@ import os
 import re
 import sys
 
-from google.oauth2 import service_account
+from google.oauth2.credentials import Credentials
+from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 
@@ -15,8 +16,8 @@ SCOPES = [
     "https://www.googleapis.com/auth/drive"
 ]
 
-SERVICE_ACCOUNT_FILE = os.environ.get(
-    "GOOGLE_APPLICATION_CREDENTIALS"
+TOKEN_FILE = os.environ.get(
+    "GOOGLE_DRIVE_TOKEN_FILE"
 )
 
 
@@ -25,24 +26,24 @@ SERVICE_ACCOUNT_FILE = os.environ.get(
 # ============================================================
 
 def get_drive_service():
-    if not SERVICE_ACCOUNT_FILE:
+    if not TOKEN_FILE:
         raise RuntimeError(
-            "GOOGLE_APPLICATION_CREDENTIALS is not set."
+            "GOOGLE_DRIVE_TOKEN_FILE is not set."
         )
 
-    if not os.path.exists(SERVICE_ACCOUNT_FILE):
+    if not os.path.exists(TOKEN_FILE):
         raise RuntimeError(
-            f"Google credentials file not found: "
-            f"{SERVICE_ACCOUNT_FILE}"
+            f"Google OAuth token file not found: "
+            f"{TOKEN_FILE}"
         )
 
-    credentials = (
-        service_account.Credentials
-        .from_service_account_file(
-            SERVICE_ACCOUNT_FILE,
-            scopes=SCOPES
-        )
+    credentials = Credentials.from_authorized_user_file(
+        TOKEN_FILE,
+        SCOPES
     )
+
+    if credentials.expired and credentials.refresh_token:
+        credentials.refresh(Request())
 
     return build(
         "drive",
