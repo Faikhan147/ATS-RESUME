@@ -52,25 +52,25 @@ def get_drive_service():
 
 
 # ============================================================
-# SANITIZE COMPANY NAME
+# SANITIZE NAME
 # ============================================================
 
-def sanitize_company_name(company_name):
-    company_name = company_name.strip()
+def sanitize_name(name):
+    name = name.strip()
 
-    company_name = re.sub(
+    name = re.sub(
         r'[\\/:*?"<>|]',
         '',
-        company_name
+        name
     )
 
-    company_name = re.sub(
+    name = re.sub(
         r'\s+',
         ' ',
-        company_name
+        name
     )
 
-    return company_name.strip()
+    return name.strip()
 
 
 # ============================================================
@@ -78,6 +78,7 @@ def sanitize_company_name(company_name):
 # ============================================================
 
 def extract_company_name(jd_path):
+
     with open(
         jd_path,
         "r",
@@ -90,7 +91,10 @@ def extract_company_name(jd_path):
             "JD file is empty."
         )
 
-    # Common formats
+    # --------------------------------------------------------
+    # Common company-name formats
+    # --------------------------------------------------------
+
     patterns = [
         r'^\s*\*\*(.+?)\*\*\s*$',
         r'^\s*Company\s*:\s*(.+?)\s*$',
@@ -98,6 +102,7 @@ def extract_company_name(jd_path):
     ]
 
     for pattern in patterns:
+
         match = re.search(
             pattern,
             jd_text,
@@ -105,14 +110,19 @@ def extract_company_name(jd_path):
         )
 
         if match:
+
             company_name = match.group(1).strip()
 
             if company_name:
-                return sanitize_company_name(
+
+                return sanitize_name(
                     company_name
                 )
 
-    # Fallback: first meaningful lines
+    # --------------------------------------------------------
+    # Fallback: first meaningful line
+    # --------------------------------------------------------
+
     lines = [
         line.strip()
         for line in jd_text.splitlines()
@@ -128,6 +138,7 @@ def extract_company_name(jd_path):
     }
 
     for line in lines[:10]:
+
         cleaned = re.sub(
             r'\*\*',
             '',
@@ -138,12 +149,127 @@ def extract_company_name(jd_path):
             continue
 
         if len(cleaned) <= 100:
-            return sanitize_company_name(
+
+            return sanitize_name(
                 cleaned
             )
 
     raise ValueError(
         "Could not determine company name from JD."
+    )
+
+
+# ============================================================
+# EXTRACT JOB TITLE FROM JD
+# ============================================================
+
+def extract_job_title(jd_path):
+
+    with open(
+        jd_path,
+        "r",
+        encoding="utf-8"
+    ) as file:
+        jd_text = file.read()
+
+    if not jd_text.strip():
+        raise ValueError(
+            "JD file is empty."
+        )
+
+    # --------------------------------------------------------
+    # Common job-title formats
+    # --------------------------------------------------------
+
+    patterns = [
+        r'^\s*Job Title\s*:\s*(.+?)\s*$',
+        r'^\s*Job\s*Title\s*:\s*(.+?)\s*$',
+        r'^\s*Position\s*:\s*(.+?)\s*$',
+        r'^\s*Role\s*:\s*(.+?)\s*$'
+    ]
+
+    for pattern in patterns:
+
+        match = re.search(
+            pattern,
+            jd_text,
+            re.MULTILINE | re.IGNORECASE
+        )
+
+        if match:
+
+            job_title = match.group(1).strip()
+
+            if job_title:
+
+                return sanitize_name(
+                    job_title
+                )
+
+    # --------------------------------------------------------
+    # LinkedIn-style JD fallback
+    #
+    # Example:
+    #
+    # **Palo Alto Networks**
+    #
+    # **DevOps Engineer**
+    #
+    # --------------------------------------------------------
+
+    lines = [
+        line.strip()
+        for line in jd_text.splitlines()
+        if line.strip()
+    ]
+
+    cleaned_lines = []
+
+    for line in lines[:15]:
+
+        cleaned = re.sub(
+            r'\*\*',
+            '',
+            line
+        ).strip()
+
+        if cleaned:
+            cleaned_lines.append(
+                cleaned
+            )
+
+    # If first line is company,
+    # second meaningful line is usually title.
+    if len(cleaned_lines) >= 2:
+
+        first_line = cleaned_lines[0].lower()
+
+        ignored_lines = {
+            "job description",
+            "job details",
+            "description",
+            "responsibilities",
+            "requirements"
+        }
+
+        if first_line not in ignored_lines:
+
+            possible_title = (
+                cleaned_lines[1]
+            )
+
+            if (
+                len(possible_title) <= 100
+                and possible_title.lower()
+                not in ignored_lines
+            ):
+
+                return sanitize_name(
+                    possible_title
+                )
+
+    raise ValueError(
+        "Could not determine job title from JD."
     )
 
 
@@ -156,6 +282,7 @@ def find_folder(
     folder_name,
     parent_id
 ):
+
     escaped_name = folder_name.replace(
         "'",
         "\\'"
@@ -174,7 +301,7 @@ def find_folder(
         .list(
             q=query,
             spaces="drive",
-            fields="files(id,name)",
+            fields="files(id,name,webViewLink)",
             pageSize=10
         )
         .execute()
@@ -200,6 +327,7 @@ def create_folder(
     folder_name,
     parent_id
 ):
+
     metadata = {
         "name": folder_name,
         "mimeType": (
@@ -218,11 +346,42 @@ def create_folder(
     )
 
     print(
-        f"Created company folder: "
-        f"{folder['name']}"
+        f"Created folder: {folder['name']}"
     )
 
     return folder
+
+
+# ============================================================
+# FIND OR CREATE FOLDER
+# ============================================================
+
+def find_or_create_folder(
+    drive_service,
+    folder_name,
+    parent_id
+):
+
+    folder = find_folder(
+        drive_service,
+        folder_name,
+        parent_id
+    )
+
+    if folder:
+
+        print(
+            f"Using existing folder: "
+            f"{folder['name']}"
+        )
+
+        return folder
+
+    return create_folder(
+        drive_service,
+        folder_name,
+        parent_id
+    )
 
 
 # ============================================================
@@ -234,21 +393,8 @@ def find_or_create_company_folder(
     company_name,
     root_folder_id
 ):
-    folder = find_folder(
-        drive_service,
-        company_name,
-        root_folder_id
-    )
 
-    if folder:
-        print(
-            f"Using existing company folder: "
-            f"{folder['name']}"
-        )
-
-        return folder
-
-    return create_folder(
+    return find_or_create_folder(
         drive_service,
         company_name,
         root_folder_id
@@ -256,7 +402,24 @@ def find_or_create_company_folder(
 
 
 # ============================================================
-# FIND FILE INSIDE COMPANY FOLDER
+# FIND OR CREATE JOB TITLE FOLDER
+# ============================================================
+
+def find_or_create_job_title_folder(
+    drive_service,
+    job_title,
+    company_folder_id
+):
+
+    return find_or_create_folder(
+        drive_service,
+        job_title,
+        company_folder_id
+    )
+
+
+# ============================================================
+# FIND FILE INSIDE FOLDER
 # ============================================================
 
 def find_file(
@@ -264,6 +427,7 @@ def find_file(
     file_name,
     folder_id
 ):
+
     escaped_name = file_name.replace(
         "'",
         "\\'"
@@ -280,7 +444,7 @@ def find_file(
         .list(
             q=query,
             spaces="drive",
-            fields="files(id,name)",
+            fields="files(id,name,webViewLink)",
             pageSize=10
         )
         .execute()
@@ -308,7 +472,9 @@ def upload_or_update_file(
     folder_id,
     mime_type
 ):
+
     if not os.path.exists(local_file):
+
         raise FileNotFoundError(
             f"File not found: {local_file}"
         )
@@ -326,10 +492,11 @@ def upload_or_update_file(
     )
 
     # --------------------------------------------------------
-    # Existing file → UPDATE
+    # EXISTING FILE → UPDATE
     # --------------------------------------------------------
 
     if existing_file:
+
         print(
             f"Updating existing file: "
             f"{drive_file_name}"
@@ -348,7 +515,7 @@ def upload_or_update_file(
         return updated_file
 
     # --------------------------------------------------------
-    # File doesn't exist → CREATE
+    # NEW FILE → CREATE
     # --------------------------------------------------------
 
     print(
@@ -381,13 +548,13 @@ def upload_or_update_file(
 def main():
 
     if len(sys.argv) != 4:
-        print(
-            "Usage:"
-        )
+
+        print("Usage:")
         print(
             "python3 google_drive.py "
             "<jd.txt> <final.pdf> <root_folder_id>"
         )
+
         sys.exit(1)
 
     jd_path = sys.argv[1]
@@ -399,7 +566,7 @@ def main():
     print("=" * 60)
 
     # --------------------------------------------------------
-    # 1. Extract company name
+    # 1. Extract Company Name
     # --------------------------------------------------------
 
     company_name = extract_company_name(
@@ -411,13 +578,25 @@ def main():
     )
 
     # --------------------------------------------------------
-    # 2. Connect to Google Drive
+    # 2. Extract Job Title
+    # --------------------------------------------------------
+
+    job_title = extract_job_title(
+        jd_path
+    )
+
+    print(
+        f"Job Title: {job_title}"
+    )
+
+    # --------------------------------------------------------
+    # 3. Connect to Google Drive
     # --------------------------------------------------------
 
     drive_service = get_drive_service()
 
     # --------------------------------------------------------
-    # 3. Find/Create company folder
+    # 4. Find/Create Company Folder
     # --------------------------------------------------------
 
     company_folder = (
@@ -428,7 +607,9 @@ def main():
         )
     )
 
-    company_folder_id = company_folder["id"]
+    company_folder_id = (
+        company_folder["id"]
+    )
 
     print(
         f"Company Folder ID: "
@@ -436,23 +617,45 @@ def main():
     )
 
     # --------------------------------------------------------
-    # 4. Upload/Update JD
+    # 5. Find/Create Job Title Folder
+    # --------------------------------------------------------
+
+    job_title_folder = (
+        find_or_create_job_title_folder(
+            drive_service,
+            job_title,
+            company_folder_id
+        )
+    )
+
+    job_title_folder_id = (
+        job_title_folder["id"]
+    )
+
+    print(
+        f"Job Title Folder ID: "
+        f"{job_title_folder_id}"
+    )
+
+    # --------------------------------------------------------
+    # 6. Upload/Update JD
     # --------------------------------------------------------
 
     jd_file = upload_or_update_file(
         drive_service,
         jd_path,
         "jd.txt",
-        company_folder_id,
+        job_title_folder_id,
         "text/plain"
     )
 
     print(
-        f"JD saved as: {jd_file['name']}"
+        f"JD saved as: "
+        f"{jd_file['name']}"
     )
 
     # --------------------------------------------------------
-    # 5. Keep ORIGINAL PDF filename
+    # 7. KEEP ORIGINAL PDF FILENAME
     # --------------------------------------------------------
 
     pdf_filename = os.path.basename(
@@ -460,45 +663,66 @@ def main():
     )
 
     print(
-        f"PDF filename: {pdf_filename}"
+        f"PDF filename: "
+        f"{pdf_filename}"
     )
 
     # --------------------------------------------------------
-    # 6. Upload/Update PDF
+    # 8. Upload/Update PDF
     # --------------------------------------------------------
 
     pdf_file = upload_or_update_file(
         drive_service,
         final_pdf,
         pdf_filename,
-        company_folder_id,
+        job_title_folder_id,
         "application/pdf"
     )
 
     print(
-        f"PDF saved as: {pdf_file['name']}"
+        f"PDF saved as: "
+        f"{pdf_file['name']}"
     )
 
     # --------------------------------------------------------
-    # DONE
+    # 9. DONE
     # --------------------------------------------------------
 
     print("=" * 60)
     print("GOOGLE DRIVE UPLOAD COMPLETED")
     print("=" * 60)
 
-    if company_folder.get("webViewLink"):
+    if company_folder.get(
+        "webViewLink"
+    ):
+
         print(
             f"Company Folder: "
             f"{company_folder['webViewLink']}"
         )
 
-    if pdf_file.get("webViewLink"):
+    if job_title_folder.get(
+        "webViewLink"
+    ):
+
+        print(
+            f"Job Title Folder: "
+            f"{job_title_folder['webViewLink']}"
+        )
+
+    if pdf_file.get(
+        "webViewLink"
+    ):
+
         print(
             f"Resume PDF: "
             f"{pdf_file['webViewLink']}"
         )
 
+
+# ============================================================
+# ENTRY POINT
+# ============================================================
 
 if __name__ == "__main__":
     main()
