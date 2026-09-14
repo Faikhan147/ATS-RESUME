@@ -11,9 +11,9 @@ from googleapiclient.http import MediaFileUpload
 # CONFIGURATION
 # ============================================================
 
-SCOPES = ["https://www.googleapis.com/auth/drive"]
-
-ROOT_FOLDER_NAME = "Resume Applications"
+SCOPES = [
+    "https://www.googleapis.com/auth/drive"
+]
 
 SERVICE_ACCOUNT_FILE = os.environ.get(
     "GOOGLE_APPLICATION_CREDENTIALS"
@@ -27,17 +27,21 @@ SERVICE_ACCOUNT_FILE = os.environ.get(
 def get_drive_service():
     if not SERVICE_ACCOUNT_FILE:
         raise RuntimeError(
-            "GOOGLE_APPLICATION_CREDENTIALS environment variable is not set."
+            "GOOGLE_APPLICATION_CREDENTIALS is not set."
         )
 
     if not os.path.exists(SERVICE_ACCOUNT_FILE):
         raise RuntimeError(
-            f"Google credentials file not found: {SERVICE_ACCOUNT_FILE}"
+            f"Google credentials file not found: "
+            f"{SERVICE_ACCOUNT_FILE}"
         )
 
-    credentials = service_account.Credentials.from_service_account_file(
-        SERVICE_ACCOUNT_FILE,
-        scopes=SCOPES
+    credentials = (
+        service_account.Credentials
+        .from_service_account_file(
+            SERVICE_ACCOUNT_FILE,
+            scopes=SCOPES
+        )
     )
 
     return build(
@@ -48,19 +52,25 @@ def get_drive_service():
 
 
 # ============================================================
-# SANITIZE FOLDER NAME
+# SANITIZE COMPANY NAME
 # ============================================================
 
-def sanitize_folder_name(name):
-    name = name.strip()
+def sanitize_company_name(company_name):
+    company_name = company_name.strip()
 
-    # Remove characters that can cause problems
-    name = re.sub(r'[\\/:*?"<>|]', '', name)
+    company_name = re.sub(
+        r'[\\/:*?"<>|]',
+        '',
+        company_name
+    )
 
-    # Replace multiple spaces with one
-    name = re.sub(r'\s+', ' ', name)
+    company_name = re.sub(
+        r'\s+',
+        ' ',
+        company_name
+    )
 
-    return name.strip()
+    return company_name.strip()
 
 
 # ============================================================
@@ -68,11 +78,6 @@ def sanitize_folder_name(name):
 # ============================================================
 
 def extract_company_name(jd_path):
-    if not os.path.exists(jd_path):
-        raise FileNotFoundError(
-            f"JD file not found: {jd_path}"
-        )
-
     with open(
         jd_path,
         "r",
@@ -81,13 +86,15 @@ def extract_company_name(jd_path):
         jd_text = file.read()
 
     if not jd_text.strip():
-        raise ValueError("JD file is empty.")
+        raise ValueError(
+            "JD file is empty."
+        )
 
-    # Try common JD formats first
+    # Common formats
     patterns = [
         r'^\s*\*\*(.+?)\*\*\s*$',
         r'^\s*Company\s*:\s*(.+?)\s*$',
-        r'^\s*Company Name\s*:\s*(.+?)\s*$',
+        r'^\s*Company Name\s*:\s*(.+?)\s*$'
     ]
 
     for pattern in patterns:
@@ -98,36 +105,42 @@ def extract_company_name(jd_path):
         )
 
         if match:
-            company = match.group(1).strip()
+            company_name = match.group(1).strip()
 
-            if company:
-                return sanitize_folder_name(company)
+            if company_name:
+                return sanitize_company_name(
+                    company_name
+                )
 
-    # Fallback:
-    # Look at the first few non-empty lines
+    # Fallback: first meaningful lines
     lines = [
         line.strip()
         for line in jd_text.splitlines()
         if line.strip()
     ]
 
-    for line in lines[:10]:
-        cleaned = re.sub(r'^\[|\]$', '', line)
-        cleaned = re.sub(r'\*\*', '', cleaned)
-        cleaned = cleaned.strip()
+    ignored_lines = {
+        "job description",
+        "job details",
+        "description",
+        "responsibilities",
+        "requirements"
+    }
 
-        # Skip obvious labels
-        if cleaned.lower() in {
-            "job description",
-            "job details",
-            "description",
-            "responsibilities",
-            "requirements"
-        }:
+    for line in lines[:10]:
+        cleaned = re.sub(
+            r'\*\*',
+            '',
+            line
+        ).strip()
+
+        if cleaned.lower() in ignored_lines:
             continue
 
         if len(cleaned) <= 100:
-            return sanitize_folder_name(cleaned)
+            return sanitize_company_name(
+                cleaned
+            )
 
     raise ValueError(
         "Could not determine company name from JD."
@@ -138,35 +151,42 @@ def extract_company_name(jd_path):
 # FIND FOLDER
 # ============================================================
 
-def find_folder(drive_service, folder_name, parent_id=None):
-    query_parts = [
-        f"name = '{folder_name.replace(chr(39), chr(92) + chr(39))}'",
-        "mimeType = 'application/vnd.google-apps.folder'",
-        "trashed = false"
-    ]
+def find_folder(
+    drive_service,
+    folder_name,
+    parent_id
+):
+    escaped_name = folder_name.replace(
+        "'",
+        "\\'"
+    )
 
-    if parent_id:
-        query_parts.append(
-            f"'{parent_id}' in parents"
-        )
-
-    query = " and ".join(query_parts)
+    query = (
+        f"name = '{escaped_name}' "
+        "and mimeType = "
+        "'application/vnd.google-apps.folder' "
+        "and trashed = false "
+        f"and '{parent_id}' in parents"
+    )
 
     response = (
         drive_service.files()
         .list(
             q=query,
             spaces="drive",
-            fields="files(id, name)",
+            fields="files(id,name)",
             pageSize=10
         )
         .execute()
     )
 
-    files = response.get("files", [])
+    folders = response.get(
+        "files",
+        []
+    )
 
-    if files:
-        return files[0]
+    if folders:
+        return folders[0]
 
     return None
 
@@ -175,61 +195,68 @@ def find_folder(drive_service, folder_name, parent_id=None):
 # CREATE FOLDER
 # ============================================================
 
-def create_folder(drive_service, folder_name, parent_id=None):
+def create_folder(
+    drive_service,
+    folder_name,
+    parent_id
+):
     metadata = {
         "name": folder_name,
-        "mimeType": "application/vnd.google-apps.folder"
+        "mimeType": (
+            "application/vnd.google-apps.folder"
+        ),
+        "parents": [parent_id]
     }
-
-    if parent_id:
-        metadata["parents"] = [parent_id]
 
     folder = (
         drive_service.files()
         .create(
             body=metadata,
-            fields="id, name"
+            fields="id,name,webViewLink"
         )
         .execute()
     )
 
     print(
-        f"Created folder: {folder['name']}"
+        f"Created company folder: "
+        f"{folder['name']}"
     )
 
     return folder
 
 
 # ============================================================
-# FIND OR CREATE FOLDER
+# FIND OR CREATE COMPANY FOLDER
 # ============================================================
 
-def find_or_create_folder(
+def find_or_create_company_folder(
     drive_service,
-    folder_name,
-    parent_id=None
+    company_name,
+    root_folder_id
 ):
     folder = find_folder(
         drive_service,
-        folder_name,
-        parent_id
+        company_name,
+        root_folder_id
     )
 
     if folder:
         print(
-            f"Using existing folder: {folder['name']}"
+            f"Using existing company folder: "
+            f"{folder['name']}"
         )
+
         return folder
 
     return create_folder(
         drive_service,
-        folder_name,
-        parent_id
+        company_name,
+        root_folder_id
     )
 
 
 # ============================================================
-# FIND FILE INSIDE FOLDER
+# FIND FILE INSIDE COMPANY FOLDER
 # ============================================================
 
 def find_file(
@@ -245,7 +272,7 @@ def find_file(
     query = (
         f"name = '{escaped_name}' "
         f"and '{folder_id}' in parents "
-        f"and trashed = false"
+        "and trashed = false"
     )
 
     response = (
@@ -253,13 +280,16 @@ def find_file(
         .list(
             q=query,
             spaces="drive",
-            fields="files(id, name)",
+            fields="files(id,name)",
             pageSize=10
         )
         .execute()
     )
 
-    files = response.get("files", [])
+    files = response.get(
+        "files",
+        []
+    )
 
     if files:
         return files[0]
@@ -280,7 +310,7 @@ def upload_or_update_file(
 ):
     if not os.path.exists(local_file):
         raise FileNotFoundError(
-            f"Local file not found: {local_file}"
+            f"File not found: {local_file}"
         )
 
     existing_file = find_file(
@@ -295,9 +325,14 @@ def upload_or_update_file(
         resumable=True
     )
 
+    # --------------------------------------------------------
+    # Existing file → UPDATE
+    # --------------------------------------------------------
+
     if existing_file:
         print(
-            f"Updating existing file: {drive_file_name}"
+            f"Updating existing file: "
+            f"{drive_file_name}"
         )
 
         updated_file = (
@@ -305,15 +340,20 @@ def upload_or_update_file(
             .update(
                 fileId=existing_file["id"],
                 media_body=media,
-                fields="id, name, webViewLink"
+                fields="id,name,webViewLink"
             )
             .execute()
         )
 
         return updated_file
 
+    # --------------------------------------------------------
+    # File doesn't exist → CREATE
+    # --------------------------------------------------------
+
     print(
-        f"Uploading new file: {drive_file_name}"
+        f"Uploading new file: "
+        f"{drive_file_name}"
     )
 
     metadata = {
@@ -326,7 +366,7 @@ def upload_or_update_file(
         .create(
             body=metadata,
             media_body=media,
-            fields="id, name, webViewLink"
+            fields="id,name,webViewLink"
         )
         .execute()
     )
@@ -339,6 +379,7 @@ def upload_or_update_file(
 # ============================================================
 
 def main():
+
     if len(sys.argv) != 4:
         print(
             "Usage:"
@@ -350,11 +391,11 @@ def main():
         sys.exit(1)
 
     jd_path = sys.argv[1]
-    pdf_path = sys.argv[2]
+    final_pdf = sys.argv[2]
     root_folder_id = sys.argv[3]
 
     print("=" * 60)
-    print("GOOGLE DRIVE UPLOAD")
+    print("GOOGLE DRIVE RESUME UPLOAD")
     print("=" * 60)
 
     # --------------------------------------------------------
@@ -366,7 +407,7 @@ def main():
     )
 
     print(
-        f"Company: {company_name}"
+        f"Company Name: {company_name}"
     )
 
     # --------------------------------------------------------
@@ -379,20 +420,23 @@ def main():
     # 3. Find/Create company folder
     # --------------------------------------------------------
 
-    company_folder = find_or_create_folder(
-        drive_service,
-        company_name,
-        root_folder_id
+    company_folder = (
+        find_or_create_company_folder(
+            drive_service,
+            company_name,
+            root_folder_id
+        )
     )
 
     company_folder_id = company_folder["id"]
 
     print(
-        f"Company Folder ID: {company_folder_id}"
+        f"Company Folder ID: "
+        f"{company_folder_id}"
     )
 
     # --------------------------------------------------------
-    # 4. Upload/Update jd.txt
+    # 4. Upload/Update JD
     # --------------------------------------------------------
 
     jd_file = upload_or_update_file(
@@ -404,36 +448,55 @@ def main():
     )
 
     print(
-        f"JD uploaded: {jd_file['name']}"
+        f"JD saved as: {jd_file['name']}"
     )
 
     # --------------------------------------------------------
-    # 5. Upload/Update Final Resume PDF
+    # 5. Keep ORIGINAL PDF filename
+    # --------------------------------------------------------
+
+    pdf_filename = os.path.basename(
+        final_pdf
+    )
+
+    print(
+        f"PDF filename: {pdf_filename}"
+    )
+
+    # --------------------------------------------------------
+    # 6. Upload/Update PDF
     # --------------------------------------------------------
 
     pdf_file = upload_or_update_file(
         drive_service,
-        pdf_path,
-        "Final_Resume.pdf",
+        final_pdf,
+        pdf_filename,
         company_folder_id,
         "application/pdf"
     )
 
     print(
-        f"Resume uploaded: {pdf_file['name']}"
+        f"PDF saved as: {pdf_file['name']}"
     )
 
     # --------------------------------------------------------
-    # Done
+    # DONE
     # --------------------------------------------------------
 
     print("=" * 60)
     print("GOOGLE DRIVE UPLOAD COMPLETED")
     print("=" * 60)
 
+    if company_folder.get("webViewLink"):
+        print(
+            f"Company Folder: "
+            f"{company_folder['webViewLink']}"
+        )
+
     if pdf_file.get("webViewLink"):
         print(
-            f"Drive Resume Link: {pdf_file['webViewLink']}"
+            f"Resume PDF: "
+            f"{pdf_file['webViewLink']}"
         )
 
 
