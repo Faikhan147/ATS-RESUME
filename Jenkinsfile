@@ -439,6 +439,15 @@ pipeline {
             echo "======================================"
             echo "PIPELINE COMPLETED"
             echo "======================================"
+
+            echo "CLEANING JENKINS WORKSPACE..."
+
+            cleanWs(
+                deleteDirs: true,
+                disableDeferredWipeout: true
+            )
+
+            echo "JENKINS WORKSPACE CLEANED"
         }
     }
 }
