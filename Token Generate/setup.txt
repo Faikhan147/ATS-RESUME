@@ -1,4 +1,4 @@
-Step 1. Oath Token Generate
+Step 1. Oath Token Generate(If expired)
 
 1. Download file from GitHub
 
