@@ -1,0 +1,30 @@
+Step 1. Oath Token Generate
+
+1. URL
+
+
+
+
+Step 2 Plugins
+
+File Parameter
+Pipeline Utility Steps
+
+
+Step 3 Credentials
+
+1. Secret text
+
+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
+
+ID
+
+openai-api-key
+
+
+2. Secret file(If token expired)
+
+Upload
+
+token.json
+
