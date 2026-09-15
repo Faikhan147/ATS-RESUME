@@ -1,5 +1,9 @@
 pipeline {
     agent any
+    
+    options {
+        buildDiscarder(logRotator(numToKeepStr: '1'))
+    }
 
     parameters {
         stashedFile 'RESUME'
@@ -392,18 +396,6 @@ pipeline {
                 }
             }
         }  
-
-
-        stage('Archive Resume') {
-            steps {
-                archiveArtifacts artifacts:
-                    'output/Faisal_Khan_*.docx,' +
-                    'output/Faisal_Khan_*.pdf,' +
-                    'final_ats_result.json,' +
-                    'ats_initial.json',
-                    fingerprint: true
-            }
-        }
     }
 
 
