@@ -34,3 +34,7 @@ openai-api-key
 Upload
 
 token.json
+
+ID
+
+google-drive-oauth-token
