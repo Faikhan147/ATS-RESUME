@@ -22,7 +22,7 @@ Step 3 Credentials
 
 1. Secret text
 
-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
+Copy and paste the api key from open ai platform
 
 ID
 
