@@ -1,8 +1,15 @@
 Step 1. Oath Token Generate
 
-1. URL
+1. Download file from GitHub
 
+credentials.json
+authorize.py  -> after download rename as authorize.py
 
+2. Open wsl and locate that location where the file are downloaded an run below command
+
+1. python3 authorize.py
+
+2. Copy and paste the URL from bottom in browser and select the oracle account(oraclecloud012290@gmail.com) after that token.json will generate
 
 
 Step 2 Plugins
@@ -27,4 +34,3 @@ openai-api-key
 Upload
 
 token.json
-
