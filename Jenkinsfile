@@ -242,6 +242,22 @@ pipeline {
                     echo "Final DOCX:"
                     ls -lh "output/$FINAL_BASENAME"
                 '''
+
+                script {
+                    def finalResume = sh(
+                        script: "find output -maxdepth 1 -type f -name 'Faisal_Khan_*.docx' | head -n 1",
+                        returnStdout: true
+                    ).trim()
+
+                    def finalJobTitle = sh(
+                        script: "basename '${finalResume}' .docx | sed 's/^Faisal_Khan_//; s/_/ /g'",
+                        returnStdout: true
+                    ).trim()
+
+                    env.FINAL_JOB_TITLE = finalJobTitle
+
+                    echo "Final Job Title: ${env.FINAL_JOB_TITLE}"
+                }
             }
         }
 
@@ -422,14 +438,11 @@ pipeline {
                 string(credentialsId: 'telegram-chat-id', variable: 'TELEGRAM_CHAT_ID')
             ]) {
                 sh '''
-                    FINAL_RESUME=$(find output -maxdepth 1 -type f -name 'Faisal_Khan_*.docx' | head -n 1)
-                    JOB_TITLE=$(basename "$FINAL_RESUME" .docx | sed 's/^Faisal_Khan_//; s/_/ /g')
-
                     curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
                         -d "chat_id=${TELEGRAM_CHAT_ID}" \
                         --data-urlencode "text=✅ Resume Pipeline Completed
 
-Job: $JOB_TITLE
+Job: ${FINAL_JOB_TITLE:-N/A}
 
 Final ATS Score: ${FINAL_ATS_SCORE:-N/A}
 
