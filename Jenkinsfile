@@ -422,11 +422,14 @@ pipeline {
                 string(credentialsId: 'telegram-chat-id', variable: 'TELEGRAM_CHAT_ID')
             ]) {
                 sh '''
+                    FINAL_RESUME=$(find output -maxdepth 1 -type f -name 'Faisal_Khan_*.docx' | head -n 1)
+                    JOB_TITLE=$(basename "$FINAL_RESUME" .docx | sed 's/^Faisal_Khan_//; s/_/ /g')
+
                     curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
                         -d "chat_id=${TELEGRAM_CHAT_ID}" \
                         --data-urlencode "text=✅ Resume Pipeline Completed
 
-Job: ${JOB_NAME}
+Job: $JOB_TITLE
 
 Final ATS Score: ${FINAL_ATS_SCORE:-N/A}
 
