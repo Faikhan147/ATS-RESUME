@@ -416,6 +416,24 @@ pipeline {
             echo ""
             echo "Final PDF:"
             echo "output/Faisal_Khan_*.pdf"
+
+            withCredentials([
+                string(credentialsId: 'telegram-bot-token', variable: 'TELEGRAM_BOT_TOKEN'),
+                string(credentialsId: 'telegram-chat-id', variable: 'TELEGRAM_CHAT_ID')
+            ]) {
+                sh '''
+                    curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+                        -d "chat_id=${TELEGRAM_CHAT_ID}" \
+                        --data-urlencode "text=✅ Resume Pipeline Completed
+
+Job: ${JOB_NAME}
+
+Final ATS Score: ${FINAL_ATS_SCORE:-N/A}
+
+📄 Resume uploaded to Google Drive" \
+                        > /dev/null || true
+                '''
+            }
         }
 
         failure {
@@ -425,6 +443,20 @@ pipeline {
 
             echo "Initial ATS Score: ${env.INITIAL_ATS_SCORE ?: 'N/A'}"
             echo "Final ATS Score:   ${env.FINAL_ATS_SCORE ?: 'N/A'}"
+
+            withCredentials([
+                string(credentialsId: 'telegram-bot-token', variable: 'TELEGRAM_BOT_TOKEN'),
+                string(credentialsId: 'telegram-chat-id', variable: 'TELEGRAM_CHAT_ID')
+            ]) {
+                sh '''
+                    curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+                        -d "chat_id=${TELEGRAM_CHAT_ID}" \
+                        --data-urlencode "text=❌ Resume Pipeline Failed
+
+Please check Jenkins." \
+                        > /dev/null || true
+                '''
+            }
         }
 
         always {
