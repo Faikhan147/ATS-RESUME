@@ -49,7 +49,7 @@ ID
 telegram-bot-token
 
 
-3. Secret text(If required)
+4. Secret text(If required)
 
 Copy and paste the chat id from URL(https://api.telegram.org/botNEW_TOKEN/getUpdates) in the place NEW_TOKEN copy and paste the telegram bot token
 
